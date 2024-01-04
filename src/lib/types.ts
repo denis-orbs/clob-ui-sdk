@@ -115,7 +115,8 @@ export interface QuoteResponse {
   callData: string;
   rawData: any;
 }
-export interface TokenFromDapp extends Record<string, any> {
+
+export interface Token  {
   address: string;
   decimals: number;
   symbol: string;
@@ -139,18 +140,17 @@ export type ActionStatus = "loading" | "success" | "failed" | undefined;
 
 export interface Step {
   title: string;
+  loadingTitle: string;
   link?: { href: string; text: string };
   image?: string;
   hidden?: boolean;
-  status?: ActionStatus;
 }
 
 export type partner = "quickswap" | "thena";
 
 export type SwapArgs = {
-  fromToken?: TokenFromDapp;
-  toToken?: TokenFromDapp;
-  quote?: QuoteResponse;
+  fromToken?: Token;
+  toToken?: Token;
   fromAmount?: string;
   fromTokenUsd?: string;
   toTokenUsd?: string;
@@ -159,8 +159,8 @@ export type SwapArgs = {
 };
 
 export type QuoteQueryArgs = {
-  fromToken?: TokenFromDapp;
-  toToken?: TokenFromDapp;
+  fromToken?: Token;
+  toToken?: Token;
   fromAmount?: string;
   dexAmountOut?: string;
 };
@@ -169,4 +169,6 @@ export type QuoteQueryArgs = {
 export type Partner = {
   name: string;
   explorerUrl: string;
+  normalizeToken?: (token: any) => Token;
 };
+

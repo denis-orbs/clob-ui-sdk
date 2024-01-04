@@ -14,24 +14,32 @@ export const PoweredByOrbs = ({
   symbolStyle?: CSSProperties;
 }) => {
   return (
-    <Container style={style} className={className}>
-      <a href="https://www.orbs.com/" target="_blank" rel="noreferrer">
-        <span style={labelStyles} className="title">
-          Powered by
-        </span>{" "}
-        <span style={symbolStyle}>Orbs</span> <OrbsLogo />
-      </a>
-    </Container>
+    <StyledLink
+      style={style}
+      className={className}
+      href="https://www.orbs.com/"
+      target="_blank"
+      rel="noreferrer"
+    >
+      <span style={labelStyles} className="title">
+        Powered by
+      </span>{" "}
+      <span style={symbolStyle}>Orbs</span> <OrbsLogo />
+    </StyledLink>
   );
 };
 
-const Container = styled.div`
+const StyledLink = styled.a`
+  color: ${(props) => props.theme.colors.textMain};
+  text-decoration: none;
+  font-size: 14px;
   display: flex;
+  align-items: center;
+  margin-top: 10px;
+  gap: 3px;
+  width: 100%;
   justify-content: center;
-  a {
-    display: flex;
-    align-items: center;
-    gap: 5px;
-    font-size: 14px;
+  img {
+    margin-left: 5px;
   }
 `;

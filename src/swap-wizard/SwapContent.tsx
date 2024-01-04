@@ -1,14 +1,15 @@
-import { STEPS } from "../types";
+
 import { StepComponent } from "./Step";
 import styled from "styled-components";
 import { useSwapSteps } from "../hooks";
 import { SwapDetails } from "./Details";
 import { FlexColumn } from "../styles";
-import { Button } from "../components";
+import { Button, PoweredByOrbs } from "../components";
 import { useSwapState } from "../store";
 import { useMemo } from "react";
 import { isNative } from "../lib";
 import { useSubmitSwap } from "../lib/hooks";
+import { STEPS } from "../lib/types";
 export const SwapContent = () => {
   const steps = useSwapSteps();
 
@@ -23,6 +24,7 @@ export const SwapContent = () => {
         })}
       </StyledSteps>
       <SubmitButton />
+      <PoweredByOrbs />
     </Container>
   );
 };
@@ -65,11 +67,11 @@ const StyledSubmit = styled(Button)`
 
 const Divider = styled.div`
   width: 2.5px;
-  height: calc(100% - 30px);
+  height: calc(100% - 50px);
   background-color: #e5e5e5;
   left: 12px;
   position: absolute;
-  top: 30px;
+  top: 40px;
 `;
 
 const StyledSteps = styled(FlexColumn)`

@@ -7,28 +7,19 @@ import { SwapSuccess } from "./SwapSuccess";
 import { useSubmitSwapState } from "../lib/hooks";
 
 export function SwapWizard() {
-  const va = useSubmitSwapState();
+  const swapState = useSubmitSwapState();
 
-  console.log({ va });
-  const isSuccess = false;
-  const isError = false;
-
-  const { showWizard, updateState } = useSwapState((store) => ({
+  const { showWizard, onCloseWizard } = useSwapState((store) => ({
     showWizard: store.showWizard,
-    updateState: store.updateState,
-    swapError: store.swapError,
+    onCloseWizard: store.onCloseWizard,
   }));
 
   return (
-    <Modal
-      title="Review swap"
-      open={showWizard}
-      onClose={() => updateState({ showWizard: false })}
-    >
+    <Modal title="Review swap" open={showWizard} onClose={onCloseWizard}>
       <>
-        {isError ? (
+        {swapState?.status === "error" ? (
           <SwapFailed />
-        ) : isSuccess ? (
+        ) : swapState?.status === "success" ? (
           <SwapSuccess />
         ) : (
           <SwapContent />

@@ -3,8 +3,8 @@ import styled from "styled-components";
 import { Spinner } from "../components";
 import { useSwapState } from "../store";
 import { FlexColumn, FlexRow, Link } from "../styles";
-import { ActionStatus, Step, STEPS } from "../types";
 import { Check, X } from "react-feather";
+import { Step, STEPS, ActionStatus } from "../lib/types";
 
 interface Props {
   step: Step;
@@ -12,15 +12,22 @@ interface Props {
 }
 
 export function StepComponent({ step, type }: Props) {
-  const currentStep = useSwapState((store) => store.currentStep);
+  const { currentStep, stepStatuses } = useSwapState((store) => ({
+    currentStep: store.currentStep,
+    stepStatuses: store.stepStatuses,
+  }));
+
+  const status = stepStatuses[type];
   const selected = type === currentStep;
   return (
     <StyledStep>
       <StyledStepLogo $selected={selected}>
         <img src={step.image} />
       </StyledStepLogo>
-      <FlexColumn>
-        <StyledStepTitle $selected={selected}>{step.title}</StyledStepTitle>
+      <FlexColumn $gap={5}>
+        <StyledStepTitle $selected={selected}>
+          {status === "loading" ? step.loadingTitle : step.title}
+        </StyledStepTitle>
         {step.link && (
           <StyledStepLink
             href={step.link.href}
@@ -32,7 +39,7 @@ export function StepComponent({ step, type }: Props) {
         )}
       </FlexColumn>
 
-      <StepStatus status={step.status} />
+      <StepStatus status={status} />
     </StyledStep>
   );
 }

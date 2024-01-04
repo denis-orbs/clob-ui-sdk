@@ -17,7 +17,6 @@ export function Modal({
   children: ReactNode;
 }) {
   const theme = useTheme();
-  console.log(theme);
 
   return (
     <Popup

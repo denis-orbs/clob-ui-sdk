@@ -4,9 +4,8 @@ import { Logo } from "../components";
 import { amountUi } from "../lib";
 import { useSwapState } from "../store";
 import { FlexColumn, FlexRow, Text } from "../styles";
-import { TokenFromDapp } from "../types";
-import { getLogoUrl } from "../utils";
 import BN from "bignumber.js";
+import { Token } from "../lib/types";
 
 const StyledSwapDetails = styled(FlexColumn)`
   width: 100%;
@@ -57,11 +56,12 @@ const TokenDisplay = ({
   title,
 }: {
   amount?: string;
-  token?: TokenFromDapp;
+  token?: Token;
   usd?: string;
   title: string;
 }) => {
   if (!token) return null;
+    
   return (
     <StyledTokenDisplay>
       <Title>{title}</Title>
@@ -76,7 +76,7 @@ const TokenDisplay = ({
           </TokenAmount>
           {usd && <USD>${usd}</USD>}
         </FlexColumn>
-        <StyledLogo src={getLogoUrl(token)} />
+        <StyledLogo src={token.logoUrl} />
       </FlexRow>
     </StyledTokenDisplay>
   );

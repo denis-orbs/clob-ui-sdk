@@ -2,11 +2,11 @@ import { useEffect, useMemo, useState } from "react";
 import SwapImg from "./assets/swap.png";
 import Web3 from "web3";
 import { useLiquidityHubPersistedStore, useSwapState } from "./store";
-import { LH_CONTROL, Step, STEPS } from "./types";
 import { WETH } from "./consts";
 import { isNative, useLHContext } from "./lib";
-import { getLogoUrl } from "./utils";
-import { partners } from "./config";
+import { partners } from "./lib/config";
+import { useNumericFormat } from "react-number-format";
+import { LH_CONTROL, Step, STEPS } from "./lib/types";
 
 export const useQuerySettings = (location?: Location) => {
   const { setLHControl } = useLiquidityHubPersistedStore();
@@ -27,58 +27,46 @@ export const useQuerySettings = (location?: Location) => {
 };
 
 export const useSwapSteps = (): { [key: string]: Step } => {
-  const {
-    fromToken,
-    wrapStatus,
-    sendTxStatus,
-    signStatus,
-    approveStatus,
-    approved,
-  } = useSwapState();
+  const { fromToken, approved, stepStatuses } = useSwapState((store) => ({
+    fromToken: store.fromToken,
+    approved: store.approved,
+    stepStatuses: store.stepStatuses,
+  }));
   return useMemo(() => {
     const shouldWrap = isNative(fromToken?.address);
     const steps = {
       ...(shouldWrap && {
         [STEPS.WRAP]: {
-          title:
-            wrapStatus === "loading"
-              ? "Wrap pending"
-              : `Wrap ${fromToken?.symbol}`,
+          loadingTitle: "Wrap pending...",
+          title: `Wrap ${fromToken?.symbol}`,
           image: SwapImg,
-          status: wrapStatus,
         },
       }),
       ...(!approved && {
         [STEPS.APPROVE]: {
-          title:
-            approveStatus === "loading"
-              ? "Approval pending..."
-              : `Approve ${fromToken?.symbol} spending`,
-          image: getLogoUrl(fromToken),
-          status: approveStatus,
+          loadingTitle: "Approval pending...",
+          title: `Approve ${fromToken?.symbol} spending`,
+          image: fromToken?.logoUrl,
         },
       }),
       [STEPS.SIGN]: {
-        title:
-          signStatus === "loading"
-            ? "Sign pending..."
-            : "Sign message in wallet",
+        loadingTitle: "Sign pending...",
+        title: "Sign message in wallet",
         image: SwapImg,
-        status: signStatus,
         link: {
           href: "https://etherscan.io/",
           text: "Why are signatures required?",
         },
       },
       [STEPS.SEND_TX]: {
-        title: sendTxStatus === "loading" ? "Swap pending..." : "Confirm swap",
+        loadingTitle: "Swap pending...",
+        title: "Confirm swap",
         image: SwapImg,
-        status: sendTxStatus,
       },
     };
 
     return steps;
-  }, [fromToken?.address, wrapStatus, sendTxStatus, signStatus, approveStatus]);
+  }, [fromToken, stepStatuses]);
 };
 
 export const useWeb3 = () => {
@@ -108,9 +96,6 @@ export const usePartner = () => {
   }, [partner]);
 };
 
-
-
-
 export function useDebounce<T>(value: T, delay?: number): T {
   const [debouncedValue, setDebouncedValue] = useState<T>(value);
 
@@ -124,3 +109,27 @@ export function useDebounce<T>(value: T, delay?: number): T {
 
   return debouncedValue;
 }
+
+export const useFormatNumber = ({
+  value,
+  decimalScale = 3,
+  prefix,
+  suffix,
+}: {
+  value?: string | number;
+  decimalScale?: number;
+  prefix?: string;
+  suffix?: string;
+}) => {
+  const result = useNumericFormat({
+    allowLeadingZeros: true,
+    thousandSeparator: ",",
+    displayType: "text",
+    value: value || "",
+    decimalScale,
+    prefix,
+    suffix,
+  });
+
+  return result.value?.toString();
+};

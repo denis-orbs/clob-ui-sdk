@@ -2,13 +2,13 @@
 import React, { createContext, ReactNode, useEffect, useMemo } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useAnalytics } from "../analytics";
-import { partner } from "../types";
 import { setWeb3Instance } from "@defi.org/web3-candies";
 import Web3 from "web3";
 import { SwapWizard } from "../swap-wizard/SwapWizard";
 import { useQuerySettings } from "../hooks";
 import { ThemeProvider } from "styled-components";
 import { darkTheme, lightTheme } from "./theme";
+import { partner } from "./types";
 const client = new QueryClient();
 
 interface Settings {
@@ -46,7 +46,9 @@ export const LiquidityHubProvider = ({
   useQuerySettings(location);
 
   useEffect(() => {
-    setWeb3Instance(new Web3(provider));
+    if (provider){
+       setWeb3Instance(new Web3(provider));
+    }
   }, [provider]);
 
   const _theme = useMemo(() => {

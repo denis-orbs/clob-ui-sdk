@@ -1,6 +1,6 @@
 import { useEffect } from "react";
-import { AnalyticsData, QuoteResponse } from "./types";
 import BN from "bignumber.js";
+import { AnalyticsData, QuoteResponse } from "./lib/types";
 const ANALYTICS_VERSION = 0.1;
 const BI_ENDPOINT = `https://bi.orbs.network/putes/liquidity-hub-ui-${ANALYTICS_VERSION}`;
 const DEX_PRICE_BETTER_ERROR = "Dex trade is better than Clob trade";

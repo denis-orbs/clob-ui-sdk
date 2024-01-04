@@ -1,40 +1,47 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import { ActionStatus, LH_CONTROL, STEPS, TokenFromDapp } from "./types";
+import {
+  STEPS,
+  ActionStatus,
+  LH_CONTROL,
+  Token,
+  QuoteResponse,
+} from "./lib/types";
 
-interface SwapState {
+interface SwapStateValues {
   currentStep?: STEPS;
   showWizard?: boolean;
-  fromToken?: TokenFromDapp;
-  toToken?: TokenFromDapp;
+  fromToken?: Token;
+  toToken?: Token;
   fromAmount?: string;
   fromTokenUsd?: string;
   toTokenUsd?: string;
-  swapInProgress?: boolean;
   isFailed?: boolean;
   failures?: number;
-  wrapStatus?: ActionStatus;
-  approveStatus?: ActionStatus;
-  sendTxStatus?: ActionStatus;
-  signStatus?: ActionStatus;
-  swapFinished?: boolean;
   txHash?: string;
-  quote?: any;
+  quote?: QuoteResponse;
   approved?: boolean;
-  swapError?: string;
+  stepStatuses: { [key: string]: ActionStatus };
+}
 
+interface SwapState extends SwapStateValues {
+  updateStepStatus: (step: STEPS, status: ActionStatus, data?: Partial<SwapStateValues>) => void;
   updateState: (state: Partial<SwapState>) => void;
   initSwap: (values: Partial<SwapState>) => void;
   reset: () => void;
   onSwapError: (error: string) => void;
   onSwapSuccess: () => void;
+  onCloseWizard: () => void;
 }
 
-const initialSwapState: Partial<SwapState> = {
-  wrapStatus: undefined,
-  approveStatus: undefined,
-  sendTxStatus: undefined,
-  signStatus: undefined,
+const initialStepStatuses = {
+  [STEPS.WRAP]: undefined,
+  [STEPS.APPROVE]: undefined,
+  [STEPS.SEND_TX]: undefined,
+  [STEPS.SIGN]: undefined,
+};
+
+const initialSwapState: SwapStateValues = {
   currentStep: undefined,
   fromToken: undefined,
   toToken: undefined,
@@ -42,35 +49,43 @@ const initialSwapState: Partial<SwapState> = {
   fromTokenUsd: undefined,
   toTokenUsd: undefined,
   showWizard: false,
-  swapInProgress: false,
   isFailed: false,
   failures: 0,
-  swapFinished: false,
   txHash: undefined,
   quote: undefined,
   approved: undefined,
-  swapError: undefined,
+  stepStatuses: initialStepStatuses,
 };
 
 export const useSwapState = create<SwapState>((set) => ({
   ...initialSwapState,
+  onCloseWizard: () =>
+    set({
+      showWizard: false,
+      currentStep: undefined,
+      stepStatuses: initialStepStatuses,
+    }),
+  updateStepStatus: (step, status, data = {}) =>
+    set((state) => {
+      const stepStatuses = state.stepStatuses || {};
+      stepStatuses[step] = status;
+      return {
+        stepStatuses,
+        currentStep: status === "loading" ? step : state.currentStep,
+        ...data,
+      };
+    }),
+
   updateState: (state) => set({ ...state }),
   initSwap: (values) =>
     set({
       ...values,
-      wrapStatus: undefined,
-      approveStatus: undefined,
-      sendTxStatus: undefined,
-      signStatus: undefined,
-      currentStep: undefined,
       showWizard: true,
-      swapError: undefined,
-      swapInProgress: true,
     }),
   reset: () => set({ ...initialSwapState }),
+
   onSwapSuccess: () =>
     set({
-      swapInProgress: false,
       isFailed: false,
       failures: 0,
     }),
