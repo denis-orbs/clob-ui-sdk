@@ -7,6 +7,8 @@ import {
   zeroAddress,
   contract,
   erc20abi,
+  isNativeAddress,
+  hasWeb3Instance,
 } from "@defi.org/web3-candies";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import BN from "bignumber.js";
@@ -22,10 +24,7 @@ import {
   LH_CONTROL,
 } from "../types";
 import { analytics } from "../../analytics";
-import {
-  QUERY_KEYS,
-  QUOTE_ERRORS,
-} from "../../consts";
+import { QUERY_KEYS, QUOTE_ERRORS } from "../../consts";
 import { useLHContext } from "../providers";
 import { useLiquidityHubPersistedStore, useSwapState } from "../../store";
 import { isNative } from "lodash";
@@ -35,8 +34,7 @@ import { shouldReturnZeroOutAmount } from "../../utils";
 
 const useApprove = (fromTokenAddress?: string) => {
   const { account } = useLHContext();
-  const fromTokenContract = useFromTokenContract(fromTokenAddress);
-
+  const getFromTokenContract = useFromTokenContractCallback();
   const { updateStepStatus } = useSwapState();
   return useCallback(
     async (srcAmount: string) => {
@@ -49,10 +47,17 @@ const useApprove = (fromTokenAddress?: string) => {
         if (!fromTokenAddress || !srcAmount) {
           throw new Error("Missing data");
         }
+        const fromTokenContract = getFromTokenContract(fromTokenAddress);
+
+        if (!fromTokenContract) {
+          throw new Error("Missing contract");
+        }
         const tx = fromTokenContract?.methods.approve(
           permit2Address,
           maxUint256
         );
+
+        console.log({ tx, account });
 
         await sendAndWaitForConfirmations(tx, { from: account });
         // liquidityHubAnalytics.onApprovalSuccess(count());
@@ -63,7 +68,7 @@ const useApprove = (fromTokenAddress?: string) => {
       } finally {
       }
     },
-    [account, updateStepStatus, fromTokenAddress]
+    [account, updateStepStatus, fromTokenAddress, getFromTokenContract]
   );
 };
 
@@ -93,25 +98,30 @@ const useSign = () => {
   );
 };
 
-const useFromTokenContract = (address?: string) => {
+const useFromTokenContractCallback = () => {
   const { provider } = useLHContext();
 
-  return useMemo(() => {
-    if (!address || !provider) return undefined;
-    return contract(erc20abi, address);
-  }, [address, provider]);
+  const wethAddress = useWETHAddress();
+  return useCallback(
+    (address?: string) => {
+      if (!address || !provider || !hasWeb3Instance()) return undefined;
+      const _address = isNativeAddress(address) ? wethAddress : address;
+      return _address ? contract(erc20abi, _address) : undefined;
+    },
+    [provider, wethAddress]
+  );
 };
 
 export const useApproved = (fromToken?: Token) => {
   const { account } = useLHContext();
-  const fromTokenContract = useFromTokenContract(fromToken?.address);
+  const getFromTokenContract = useFromTokenContractCallback();
   return useCallback(
     async (srcAmount: string) => {
       try {
-        if (!account || !fromToken || !srcAmount || !fromTokenContract) {
+        if (!account || !fromToken || !srcAmount) {
           return false;
         }
-
+        const fromTokenContract = getFromTokenContract(fromToken?.address);
         const allowance = await fromTokenContract?.methods
           ?.allowance(account, permit2Address)
           .call();
@@ -125,11 +135,9 @@ export const useApproved = (fromToken?: Token) => {
         return false;
       }
     },
-    [account, fromToken?.address]
+    [account, fromToken?.address, getFromTokenContract]
   );
 };
-
-
 
 const useSubmitTx = () => {
   const { provider, account, chainId, apiUrl } = useLHContext();
@@ -226,6 +234,8 @@ export const useSwap = () => {
         throw new Error("Missing from amount");
       }
 
+      console.log(fromToken, toToken, quote, fromAmount);
+
       onSwapStart();
       const isNativeIn = isNative(fromToken.address);
       const isNativeOut = isNative(toToken.address);
@@ -266,7 +276,8 @@ export const useSwap = () => {
 const useWrap = (fromToken?: Token) => {
   const { account } = useLHContext();
   const { updateStepStatus } = useSwapState();
-  const fromTokenContract = useFromTokenContract();
+  const getFromTokenContract = useFromTokenContractCallback();
+
   return useCallback(
     async (srcAmount: string) => {
       if (!account) {
@@ -275,6 +286,7 @@ const useWrap = (fromToken?: Token) => {
       if (!fromToken) {
         throw new Error("Missing from token");
       }
+      const fromTokenContract = getFromTokenContract(fromToken?.address);
       if (!fromTokenContract) {
         throw new Error("Missing from token contract");
       }
@@ -296,7 +308,7 @@ const useWrap = (fromToken?: Token) => {
         throw new Error(error.message);
       }
     },
-    [account, updateStepStatus]
+    [account, updateStepStatus, getFromTokenContract]
   );
 };
 
@@ -385,10 +397,16 @@ export const useQuote = ({
   fromAmount,
   dexAmountOut,
 }: QuoteQueryArgs) => {
-  const { liquidityHubEnabled } = useLiquidityHubPersistedStore();
-  const { account, slippage, chainId, partner, quoteInterval, apiUrl } = useLHContext();
+  const liquidityHubEnabled = useLiquidityHubPersistedStore(
+    (s) => s.liquidityHubEnabled
+  );
+  const { account, slippage, chainId, partner, quoteInterval, apiUrl } =
+    useLHContext();
   const [error, setError] = useState(false);
-  const isFailed = useSwapState((s) => s.isFailed);
+  const { isFailed, pauseQuote } = useSwapState((s) => ({
+    isFailed: s.isFailed,
+    pauseQuote: s.showWizard,
+  }));
 
   const { fromAddress, toAddress } = useMemo(() => {
     return {
@@ -407,7 +425,8 @@ export const useQuote = ({
     !!toToken &&
     !!fromAmount &&
     !isFailed &&
-    liquidityHubEnabled;
+    liquidityHubEnabled &&
+    !pauseQuote;
 
   const query = useQuery({
     queryKey: [
@@ -456,7 +475,7 @@ export const useQuote = ({
 };
 
 export const useIsClobTrade = (dexOutAmount?: string, lhOutAmount?: string) => {
-  const { isFailed } = useSwapState();
+  const isFailed = useSwapState((s) => s.isFailed);
   const { liquidityHubEnabled, lhControl } = useLiquidityHubPersistedStore();
   return useMemo(() => {
     if (!dexOutAmount || !lhOutAmount) return;
@@ -469,7 +488,7 @@ export const useIsClobTrade = (dexOutAmount?: string, lhOutAmount?: string) => {
       return true;
     }
     if (isFailed) {
-      return true;
+      return false;
     }
 
     return new BN(lhOutAmount || "0").gt(new BN(dexOutAmount));

@@ -1,6 +1,5 @@
 import { isNativeAddress, TokenData, parsebn } from "@defi.org/web3-candies";
 import BN from "bignumber.js";
-import Web3 from "web3";
 
 export const isNative = (address?: string) => isNativeAddress(address || "");
 export const amountBN = (token: TokenData, amount: string) =>
@@ -15,8 +14,8 @@ function delay(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-export async function waitForTxResponse(txHash: string, provider: any) {
-  const web3 = new Web3(provider);
+export async function waitForTxResponse(txHash: string, web3: any) {
+
   for (let i = 0; i < 30; ++i) {
     // due to swap being fetch and not web3
 
