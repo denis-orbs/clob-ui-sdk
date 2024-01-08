@@ -78,11 +78,12 @@ const SuccessToken = ({
   token?: Token;
   amount?: string;
 }) => {
+  const _amount = useFormatNumber({ value: amount });
   return (
     <FlexRow>
       <StyledLogo src={token?.logoUrl} />
       <StyledTokenText>
-        {amount} {token?.symbol}
+        {_amount} {token?.symbol}
       </StyledTokenText>
     </FlexRow>
   );

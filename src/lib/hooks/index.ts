@@ -57,7 +57,6 @@ const useApprove = (fromTokenAddress?: string) => {
           maxUint256
         );
 
-        console.log({ tx, account });
 
         await sendAndWaitForConfirmations(tx, { from: account });
         // liquidityHubAnalytics.onApprovalSuccess(count());
@@ -233,8 +232,6 @@ export const useSwap = () => {
       if (!fromAmount) {
         throw new Error("Missing from amount");
       }
-
-      console.log(fromToken, toToken, quote, fromAmount);
 
       onSwapStart();
       const isNativeIn = isNative(fromToken.address);
