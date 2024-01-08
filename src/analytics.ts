@@ -1,16 +1,10 @@
-import { useEffect } from "react";
 import BN from "bignumber.js";
 import { AnalyticsData, QuoteResponse } from "./lib/types";
 const ANALYTICS_VERSION = 0.1;
 const BI_ENDPOINT = `https://bi.orbs.network/putes/liquidity-hub-ui-${ANALYTICS_VERSION}`;
 const DEX_PRICE_BETTER_ERROR = "Dex trade is better than Clob trade";
 
-export const useAnalytics = (partner: string, chainId?: number) => {
-  useEffect(() => {
-    analytics.data.chainId = chainId;
-    analytics.data.partner = partner;
-  }, [partner, chainId]);
-};
+
 
 const initialData: Partial<AnalyticsData> = {
   _id: crypto.randomUUID(),
@@ -70,6 +64,13 @@ class Analytics {
       console.log("Analytics error", error);
     }
   }
+  init(chainId: number, partner: string) {
+    this.data = {
+      ...this.data,
+      chainId,
+      partner,
+    }
+  }
 
   incrementQuoteIndex() {
     this.updateAndSend({
@@ -108,14 +109,20 @@ class Analytics {
       if (!quoteResponse?.outAmount || !this.data.dexAmountOut) {
         return "";
       }
-      return new BN(quoteResponse?.outAmount).dividedBy(new BN(this.data.dexAmountOut)).minus(1).multipliedBy(100).toFixed(2);
+      return new BN(quoteResponse?.outAmount)
+        .dividedBy(new BN(this.data.dexAmountOut))
+        .minus(1)
+        .multipliedBy(100)
+        .toFixed(2);
     };
 
     this.updateAndSend({
       [`quote-${this.data.quoteIndex}-amount-out`]: quoteResponse?.outAmount,
       [`quote-${this.data.quoteIndex}-permit-data`]: quoteResponse?.permitData,
-      [`quote-${this.data.quoteIndex}-serialized-order`]: quoteResponse?.serializedOrder,
-      [`quote-${this.data.quoteIndex}-quote-call-data`]: quoteResponse?.callData,
+      [`quote-${this.data.quoteIndex}-serialized-order`]:
+        quoteResponse?.serializedOrder,
+      [`quote-${this.data.quoteIndex}-quote-call-data`]:
+        quoteResponse?.callData,
       [`quote-${this.data.quoteIndex}-quote-millis`]: time,
       [`quote-${this.data.quoteIndex}-quote-raw-data`]: quoteResponse?.rawData,
       clobDexPriceDiffPercent: getDiff(),
@@ -256,7 +263,15 @@ class Analytics {
     };
   }
 
-  async pollTransaction({ response, onSucess, onFailed }: { response: any; onSucess: () => void; onFailed: () => void }) {
+  async pollTransaction({
+    response,
+    onSucess,
+    onFailed,
+  }: {
+    response: any;
+    onSucess: () => void;
+    onFailed: () => void;
+  }) {
     try {
       const receipt = await response.wait();
       if (receipt.status === 1) {
@@ -291,7 +306,8 @@ class Analytics {
   }
 
   onClobFailure() {
-    this.firstFailureSessionId = this.firstFailureSessionId || this.data.sessionId || "";
+    this.firstFailureSessionId =
+      this.firstFailureSessionId || this.data.sessionId || "";
   }
 }
 

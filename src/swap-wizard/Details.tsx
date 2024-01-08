@@ -6,6 +6,7 @@ import { useSwapState } from "../store";
 import { FlexColumn, FlexRow, Text } from "../styles";
 import BN from "bignumber.js";
 import { Token } from "../lib/types";
+import { useFormatNumber } from "../hooks";
 
 const StyledSwapDetails = styled(FlexColumn)`
   width: 100%;
@@ -61,6 +62,8 @@ const TokenDisplay = ({
   title: string;
 }) => {
   if (!token) return null;
+
+  const _amount = useFormatNumber({value: amount})
     
   return (
     <StyledTokenDisplay>
@@ -72,7 +75,7 @@ const TokenDisplay = ({
       >
         <FlexColumn $alignItems="flex-start">
           <TokenAmount>
-            {amount} {token.symbol}
+            {_amount} {token.symbol}
           </TokenAmount>
           {usd && <USD>${usd}</USD>}
         </FlexColumn>

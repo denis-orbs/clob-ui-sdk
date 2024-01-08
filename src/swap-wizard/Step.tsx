@@ -17,7 +17,8 @@ export function StepComponent({ step, type }: Props) {
     stepStatuses: store.stepStatuses,
   }));
 
-  const status = stepStatuses[type];
+
+  const status = stepStatuses?.[type];
   const selected = type === currentStep;
   return (
     <StyledStep>
@@ -43,7 +44,6 @@ export function StepComponent({ step, type }: Props) {
     </StyledStep>
   );
 }
-
 
 const StyledStep = styled(FlexRow)`
   min-height: 40px;

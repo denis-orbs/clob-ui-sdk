@@ -21,25 +21,24 @@ interface SwapStateValues {
   txHash?: string;
   quote?: QuoteResponse;
   approved?: boolean;
-  stepStatuses: { [key: string]: ActionStatus };
+  stepStatuses?: { [key: string]: ActionStatus };
+  swapStatus: ActionStatus;
+  swapError?: string;
+  dexOnSwapSuccess?: () => void;
 }
 
 interface SwapState extends SwapStateValues {
-  updateStepStatus: (step: STEPS, status: ActionStatus, data?: Partial<SwapStateValues>) => void;
+  updateStepStatus: (
+    step: STEPS,
+    status: ActionStatus,
+    data?: Partial<SwapStateValues>
+  ) => void;
   updateState: (state: Partial<SwapState>) => void;
-  initSwap: (values: Partial<SwapState>) => void;
-  reset: () => void;
   onSwapError: (error: string) => void;
   onSwapSuccess: () => void;
-  onCloseWizard: () => void;
+  onSwapStart: () => void;
+  onCloseSwap: () => void;
 }
-
-const initialStepStatuses = {
-  [STEPS.WRAP]: undefined,
-  [STEPS.APPROVE]: undefined,
-  [STEPS.SEND_TX]: undefined,
-  [STEPS.SIGN]: undefined,
-};
 
 const initialSwapState: SwapStateValues = {
   currentStep: undefined,
@@ -54,52 +53,56 @@ const initialSwapState: SwapStateValues = {
   txHash: undefined,
   quote: undefined,
   approved: undefined,
-  stepStatuses: initialStepStatuses,
+  stepStatuses: undefined,
+  swapStatus: undefined,
+  swapError: undefined,
+  dexOnSwapSuccess: undefined,
 };
 
-export const useSwapState = create<SwapState>((set) => ({
+export const useSwapState = create<SwapState>((set, get) => ({
   ...initialSwapState,
-  onCloseWizard: () =>
-    set({
-      showWizard: false,
-      currentStep: undefined,
-      stepStatuses: initialStepStatuses,
-    }),
+  onSwapStart: () => set({ swapStatus: "loading" }),
   updateStepStatus: (step, status, data = {}) =>
     set((state) => {
       const stepStatuses = state.stepStatuses || {};
       stepStatuses[step] = status;
       return {
         stepStatuses,
-        currentStep: status === "loading" ? step : state.currentStep,
         ...data,
+        currentStep: step,
       };
     }),
 
   updateState: (state) => set({ ...state }),
-  initSwap: (values) =>
-    set({
-      ...values,
-      showWizard: true,
-    }),
-  reset: () => set({ ...initialSwapState }),
-
-  onSwapSuccess: () =>
+  onSwapSuccess: () => {
+    get().dexOnSwapSuccess?.();
     set({
       isFailed: false,
       failures: 0,
-    }),
-
-  onSwapError: (error) =>
+      swapStatus: "success",
+    });
+  },
+  onSwapError: (swapError) =>
     set((state) => {
       const failures = (state.failures || 0) + 1;
       return {
         failures,
         isFailed: failures > 2,
-        swapInProgress: false,
-        swapError: error,
+        swapError,
+        swapStatus: "failed",
       };
     }),
+  onCloseSwap: () => {
+    set({
+      showWizard: false,
+    });
+
+    if (get().swapStatus !== "loading") {
+      setTimeout(() => {
+        set(initialSwapState);
+      }, 200);
+    }
+  },
 }));
 
 interface LHControlStore {

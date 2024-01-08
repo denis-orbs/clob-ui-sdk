@@ -1,4 +1,3 @@
-
 import { StepComponent } from "./Step";
 import styled from "styled-components";
 import { useSwapSteps } from "../hooks";
@@ -8,22 +7,30 @@ import { Button, PoweredByOrbs } from "../components";
 import { useSwapState } from "../store";
 import { useMemo } from "react";
 import { isNative } from "../lib";
-import { useSubmitSwap } from "../lib/hooks";
+import { useSwap } from "../lib/hooks";
+
 import { STEPS } from "../lib/types";
-export const SwapContent = () => {
+export const SwapMain = () => {
   const steps = useSwapSteps();
+  const approved = useSwapState((store) => store.approved);
 
   return (
     <Container>
       <SwapDetails />
-      <StyledSteps $gap={15} style={{ width: "100%" }}>
-        <Divider />
-        {Object.keys(steps)?.map((key, index) => {
-          const step = steps[key];
-          return <StepComponent key={index} type={key as STEPS} step={step} />;
-        })}
-      </StyledSteps>
-      <SubmitButton />
+      {approved == null ? null : (
+        <>
+          <StyledSteps $gap={15} style={{ width: "100%" }}>
+            <Divider />
+            {Object.keys(steps)?.map((key, index) => {
+              const step = steps[key];
+              return (
+                <StepComponent key={index} type={key as STEPS} step={step} />
+              );
+            })}
+          </StyledSteps>
+          <SubmitButton />
+        </>
+      )}
       <PoweredByOrbs />
     </Container>
   );
@@ -31,8 +38,7 @@ export const SwapContent = () => {
 
 const SubmitButton = () => {
   const buttonText = useSubmitButtonText();
-
-  const { mutate, isPending } = useSubmitSwap();
+  const { mutate, isPending } = useSwap();
 
   if (isPending) return null;
   return <StyledSubmit onClick={mutate}>{buttonText}</StyledSubmit>;

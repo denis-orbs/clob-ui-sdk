@@ -1,24 +1,30 @@
 import { AlertCircle } from "react-feather";
 import styled from "styled-components";
+import { useSwapState } from "../store";
 import { FlexRow, FlexColumn, Text } from "../styles";
 
 
 export const SwapFailed = () => {
-
+  const swapError = useSwapState((store) => store.swapError);
   return (
     <Container>
       <MainLogo>
         <AlertCircle />
       </MainLogo>
-      <ErrorText>Swap failed</ErrorText>
-
-
+      <Title>Swap failed</Title>
+      <ErrorText>{swapError}</ErrorText>
     </Container>
   );
 };
 
 const ErrorText = styled(Text)`
+  opacity: 0.6;
+  font-size: 16px;
+`
+
+const Title = styled(Text)`
   font-size: 20px;
+  font-weight: 500;
 `;
 
 

@@ -1,30 +1,50 @@
 /* eslint-disable import/no-extraneous-dependencies */
 import { useSwapState } from "../store";
 import { Modal } from "../components";
-import { SwapFailed } from "./SwapFailed";
-import { SwapContent } from "./SwapContent";
+import { SwapMain } from "./SwapMain";
 import { SwapSuccess } from "./SwapSuccess";
-import { useSubmitSwapState } from "../lib/hooks";
+import styled from "styled-components";
+import { SwapFailed } from "./SwapFailed";
+import { useMemo } from "react";
 
 export function SwapWizard() {
-  const swapState = useSubmitSwapState();
-
-  const { showWizard, onCloseWizard } = useSwapState((store) => ({
-    showWizard: store.showWizard,
-    onCloseWizard: store.onCloseWizard,
+  const { swapStatus, onCloseSwap } = useSwapState((store) => ({
+    swapStatus: store.swapStatus,
+    onCloseSwap: store.onCloseSwap,
   }));
 
+  const { showWizard } = useSwapState((store) => ({
+    showWizard: store.showWizard,
+  }));
+
+  const modalTitle = useMemo(() => {
+    if (swapStatus === "success") {
+      return "Swap completed";
+    }
+    if (swapStatus === "failed") {
+      return "";
+    }
+    return "Review swap";
+  }, [swapStatus]);
+
   return (
-    <Modal title="Review swap" open={showWizard} onClose={onCloseWizard}>
-      <>
-        {swapState?.status === "error" ? (
-          <SwapFailed />
-        ) : swapState?.status === "success" ? (
+    <Modal title={modalTitle} open={showWizard} onClose={onCloseSwap}>
+      <Container>
+        {swapStatus === "success" ? (
           <SwapSuccess />
+        ) : swapStatus === "failed" ? (
+          <SwapFailed />
         ) : (
-          <SwapContent />
+          <SwapMain />
         )}
-      </>
+      </Container>
     </Modal>
   );
 }
+
+const Container = styled.div`
+  width: 100%;
+  * {
+    box-sizing: border-box;
+  }
+`;

@@ -1,29 +1,31 @@
 /* eslint-disable import/no-extraneous-dependencies */
 import React, { createContext, ReactNode, useEffect, useMemo } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { useAnalytics } from "../analytics";
+import { analytics } from "../analytics";
 import { setWeb3Instance } from "@defi.org/web3-candies";
 import Web3 from "web3";
 import { SwapWizard } from "../swap-wizard/SwapWizard";
 import { useQuerySettings } from "../hooks";
 import { ThemeProvider } from "styled-components";
 import { darkTheme, lightTheme } from "./theme";
-import { partner } from "./types";
+import { DEFAULT_API_ENDPOINT, DEFAULT_QUOTE_INTERVAL } from "../consts";
 const client = new QueryClient();
 
-interface Settings {
-  quoteInterval?: number;
+interface UISettings {
+  buttonColor?: string;
 }
 
 interface SharedProps {
   provider?: any;
   account?: string;
   chainId?: number;
-  partner: partner;
+  partner: string;
   slippage?: number;
   location?: Location;
-  settings?: Settings;
   theme?: "light" | "dark";
+  apiUrl?: string;
+  uiSettings?: UISettings;
+  quoteInterval?: number;
 }
 const Context = createContext({} as SharedProps);
 
@@ -39,15 +41,22 @@ export const LiquidityHubProvider = ({
   partner,
   slippage,
   location,
-  settings,
+  uiSettings,
   theme,
+  quoteInterval = DEFAULT_QUOTE_INTERVAL,
+  apiUrl = DEFAULT_API_ENDPOINT,
 }: Props) => {
-  useAnalytics(partner, chainId);
+  useEffect(() => {
+    if (chainId) {
+      analytics.init(chainId, partner);
+    }
+  }, [partner, chainId]);
+
   useQuerySettings(location);
 
   useEffect(() => {
-    if (provider){
-       setWeb3Instance(new Web3(provider));
+    if (provider) {
+      setWeb3Instance(new Web3(provider));
     }
   }, [provider]);
 
@@ -64,8 +73,10 @@ export const LiquidityHubProvider = ({
           chainId,
           partner,
           slippage,
-          settings,
+          uiSettings,
           theme,
+          quoteInterval,
+          apiUrl,
         }}
       >
         <ThemeProvider theme={_theme}>

@@ -8,6 +8,7 @@ export interface QuoteArgs {
   dexAmountOut?: string;
   signal?: AbortSignal;
   partner: string;
+  apiUrl?: string;
 }
 export interface SendTxArgs {
   user: string;
@@ -149,8 +150,8 @@ export interface Step {
 export type partner = "quickswap" | "thena";
 
 export type SwapArgs = {
-  fromToken?: Token;
-  toToken?: Token;
+  fromToken?: any;
+  toToken?: any;
   fromAmount?: string;
   fromTokenUsd?: string;
   toTokenUsd?: string;

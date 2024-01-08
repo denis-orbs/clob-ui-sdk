@@ -21,7 +21,6 @@ export const useSettings = () => {
 };
 
 export const useLHSwap = (args: SwapArgs) => {
-  const initSwap = useSwapState((store) => store.initSwap);
   const partner = usePartner();
   const { fromToken, toToken } = useMemo(() => {
     if (!partner || !partner.normalizeToken) {
@@ -31,15 +30,20 @@ export const useLHSwap = (args: SwapArgs) => {
       };
     }
     return {
-      fromToken: partner.normalizeToken(args.fromToken),
-      toToken: partner.normalizeToken(args.toToken),
+      fromToken: args.fromToken && partner.normalizeToken(args.fromToken),
+      toToken: args.toToken && partner.normalizeToken(args.toToken),
     };
-  }, [partner, args.fromToken, args.toToken]);
+  }, [partner, args.fromToken?.address, args.toToken?.address]);
 
   // poll for allowance
   useAllowanceQuery(fromToken, args.fromAmount);
   const queryKey = useApproveQueryKey(fromToken?.address, args.fromAmount);
   const queryClient = useQueryClient();
+  const { swapStatus, swapError, updateState } = useSwapState((store) => ({
+    swapStatus: store.swapStatus,
+    swapError: store.swapError,
+    updateState: store.updateState,
+  }));
 
   const {
     data: quote,
@@ -56,25 +60,25 @@ export const useLHSwap = (args: SwapArgs) => {
     quote?.outAmount
   );
 
-  const {
-    mutate: swapCallback,
-    isPending: swapLoading,
-    error: swapError,
-  } = useMutation({
-    mutationFn: async () => {
-      if (!args.fromToken || !args.toToken || !args.fromAmount || !quote) {
+  const { mutate} = useMutation({
+    mutationFn: async () => {        
+      if (!args.fromToken || !args.toToken || !args.fromAmount) {
         return;
       }
+        updateState({
+          fromToken,
+          toToken,
+          fromAmount: args.fromAmount,
+          fromTokenUsd: args.fromTokenUsd,
+          toTokenUsd: args.toTokenUsd,
+          quote,
+          showWizard: true,
+          dexOnSwapSuccess: args.onSwapSuccess
+        });
       return queryClient.ensureQueryData({ queryKey }) as Promise<boolean>;
     },
     onSuccess: (approved) => {
-      initSwap({
-        fromToken,
-        toToken,
-        fromAmount: args.fromAmount,
-        fromTokenUsd: args.fromTokenUsd,
-        toTokenUsd: args.toTokenUsd,
-        quote,
+      updateState({
         approved,
       });
     },
@@ -84,8 +88,8 @@ export const useLHSwap = (args: SwapArgs) => {
     quote,
     quoteLoading,
     quoteError,
-    swapCallback,
-    swapLoading,
+    swapCallback: mutate,
+    swapLoading: swapStatus === "loading",
     swapError,
     isLiquidityHubTrade,
   };

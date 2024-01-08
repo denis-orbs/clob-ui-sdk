@@ -125,24 +125,7 @@ table {
 
 /* animation */
 
-@keyframes anvil {
-  0% {
-    opacity: 0;
-  }
 
-  100% {
-    opacity: 1;
-  }
-}
-.popup-content {
-  -webkit-animation: anvil 0.3s forwards;
-  animation: anvil 0.3s forwards;
-}
-
-.popup-overlay {
-  -webkit-animation: anvil 0.3s forwards;
-  animation: anvil 0.3s forwards;
-}
 
 
 body{

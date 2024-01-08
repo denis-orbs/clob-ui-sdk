@@ -1,7 +1,7 @@
 /* eslint-disable import/no-extraneous-dependencies */
 import Popup from "reactjs-popup";
 import { FlexColumn, FlexRow, Text } from "../styles";
-import styled, { useTheme } from "styled-components";
+import styled, { useTheme, keyframes } from "styled-components";
 import { X } from "react-feather";
 import { ReactNode } from "react";
 
@@ -19,7 +19,7 @@ export function Modal({
   const theme = useTheme();
 
   return (
-    <Popup
+    <StyledPopup
       closeOnDocumentClick={false}
       open={open}
       position="right center"
@@ -45,11 +45,31 @@ export function Modal({
         </FlexRow>
         {children}
       </FlexColumn>
-    </Popup>
+    </StyledPopup>
   );
 }
 
+const animation = keyframes`
+     0% {
+      opacity: 0;
+    }
 
+    100% {
+      opacity: 1;
+    }
+`;
+
+const StyledPopup = styled(Popup)`
+  &-content {
+    -webkit-animation: ${animation} 0.3s forwards;
+    animation: ${animation} 0.3s forwards;
+  }
+
+  &-overlay {
+    -webkit-animation: ${animation} 0.3s forwards;
+    animation: ${animation} 0.3s forwards;
+  }
+`;
 
 const Header = ({ children }: { children: string }) => {
   return <StyledHeader>{children}</StyledHeader>;
@@ -58,9 +78,6 @@ const Header = ({ children }: { children: string }) => {
 const StyledHeader = styled(Text)`
   width: 100%;
 `;
-
-
-
 
 const CloseButton = styled.div`
   position: absolute;

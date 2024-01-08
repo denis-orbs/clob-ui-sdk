@@ -8,12 +8,7 @@ import {
   contract,
   erc20abi,
 } from "@defi.org/web3-candies";
-import {
-  QueryKey,
-  useMutation,
-  useMutationState,
-  useQuery,
-} from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import BN from "bignumber.js";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Web3 from "web3";
@@ -28,8 +23,6 @@ import {
 } from "../types";
 import { analytics } from "../../analytics";
 import {
-  API_ENDPOINT,
-  DEFAULT_QUOTE_INTERVAL,
   QUERY_KEYS,
   QUOTE_ERRORS,
 } from "../../consts";
@@ -66,7 +59,6 @@ const useApprove = (fromTokenAddress?: string) => {
         updateStepStatus(STEPS.APPROVE, "success");
       } catch (error: any) {
         // liquidityHubAnalytics.onApprovalFailed(error.message, count());
-        updateStepStatus(STEPS.APPROVE, "failed");
         throw new Error(error.message);
       } finally {
       }
@@ -93,7 +85,6 @@ const useSign = () => {
         updateStepStatus(STEPS.SIGN, "success");
         return signature;
       } catch (error: any) {
-        updateStepStatus(STEPS.SIGN, "failed");
         // liquidityHubAnalytics.onSignatureFailed(error.message, count());
         throw new Error(error.message);
       }
@@ -138,8 +129,10 @@ export const useApproved = (fromToken?: Token) => {
   );
 };
 
+
+
 const useSubmitTx = () => {
-  const { provider, account, chainId } = useLHContext();
+  const { provider, account, chainId, apiUrl } = useLHContext();
   const { updateStepStatus } = useSwapState();
   return useCallback(
     async (args: SubmitTxArgs) => {
@@ -148,7 +141,7 @@ const useSubmitTx = () => {
       try {
         // liquidityHubAnalytics.onSwapRequest();
         const txHashResponse = await fetch(
-          `${API_ENDPOINT}/swapx?chainId=${chainId}`,
+          `${apiUrl}/swapx?chainId=${chainId}`,
           {
             method: "POST",
             body: JSON.stringify({
@@ -179,7 +172,6 @@ const useSubmitTx = () => {
 
         return tx;
       } catch (error: any) {
-        updateStepStatus(STEPS.SEND_TX, "failed");
         const message = error.message;
         // liquidityHubAnalytics.onSwapFailed(message, count());
         throw new Error(message);
@@ -189,7 +181,7 @@ const useSubmitTx = () => {
   );
 };
 
-export const useSubmitSwap = () => {
+export const useSwap = () => {
   const sign = useSign();
   const submitTx = useSubmitTx();
 
@@ -201,6 +193,7 @@ export const useSubmitSwap = () => {
     onSwapSuccess,
     onSwapError,
     approved,
+    onSwapStart,
   } = useSwapState((store) => ({
     fromToken: store.fromToken,
     toToken: store.toToken,
@@ -209,19 +202,31 @@ export const useSubmitSwap = () => {
     approved: store.approved,
     onSwapSuccess: store.onSwapSuccess,
     onSwapError: store.onSwapError,
+    onSwapStart: store.onSwapStart,
   }));
 
   const approve = useApprove(fromToken?.address);
   const wrap = useWrap(fromToken);
 
   const wethAddress = useWETHAddress();
-  const mutationKey = useSubmitSwapMutationKey();
   return useMutation({
-    mutationKey,
     mutationFn: async () => {
-      if (!fromToken || !toToken || !fromAmount || !wethAddress || !quote) {
+      if (!wethAddress) {
+        throw new Error("Missing weth address");
+      }
+
+      if (!quote) {
+        throw new Error("Missing quote");
+      }
+
+      if (!fromToken || !toToken) {
         throw new Error("Missing from or to token");
       }
+      if (!fromAmount) {
+        throw new Error("Missing from amount");
+      }
+
+      onSwapStart();
       const isNativeIn = isNative(fromToken.address);
       const isNativeOut = isNative(toToken.address);
 
@@ -287,42 +292,12 @@ const useWrap = (fromToken?: Token) => {
         updateStepStatus(STEPS.WRAP, "success");
         return true;
       } catch (error: any) {
-        updateStepStatus(STEPS.WRAP, "failed");
         // analytics.onWrapFailed(error.message, count());
         throw new Error(error.message);
       }
     },
     [account, updateStepStatus]
   );
-};
-
-const useSubmitSwapMutationKey = (): QueryKey => {
-  const { fromAmount, fromToken, toToken, quote } = useSwapState((store) => ({
-    fromToken: store.fromToken,
-    toToken: store.toToken,
-    fromAmount: store.fromAmount,
-    quote: store.quote,
-  }));
-
-  return useMemo(() => {
-    return [
-      QUERY_KEYS.useSubmitSwap,
-      fromToken?.address,
-      toToken?.address,
-      fromAmount,
-      quote?.outAmount,
-    ];
-  }, [fromToken, toToken, fromAmount, quote?.outAmount]);
-};
-
-export const useSubmitSwapState = () => {
-  const mutationKey = useSubmitSwapMutationKey();
-  const res = useMutationState({
-    filters: { mutationKey },
-    select: (mutation) => mutation.state,
-  });
-
-  return res[0];
 };
 
 export const useApproveQueryKey = (
@@ -361,7 +336,7 @@ export const useAllowanceQuery = (fromToken?: Token, fromAmount?: string) => {
 const quote = async (args: QuoteArgs) => {
   try {
     const response = await fetch(
-      `${API_ENDPOINT}/quote?chainId=${args.chainId}`,
+      `${args.apiUrl}/quote?chainId=${args.chainId}`,
       {
         method: "POST",
         body: JSON.stringify({
@@ -411,7 +386,7 @@ export const useQuote = ({
   dexAmountOut,
 }: QuoteQueryArgs) => {
   const { liquidityHubEnabled } = useLiquidityHubPersistedStore();
-  const { account, slippage, chainId, partner, settings } = useLHContext();
+  const { account, slippage, chainId, partner, quoteInterval, apiUrl } = useLHContext();
   const [error, setError] = useState(false);
   const isFailed = useSwapState((s) => s.isFailed);
 
@@ -442,6 +417,7 @@ export const useQuote = ({
       fromAmount,
       slippage,
       account,
+      apiUrl,
     ],
     queryFn: async ({ signal }) => {
       const res = await quote({
@@ -454,10 +430,11 @@ export const useQuote = ({
         signal,
         chainId: chainId!,
         partner,
+        apiUrl,
       });
       return res;
     },
-    refetchInterval: settings?.quoteInterval || DEFAULT_QUOTE_INTERVAL,
+    refetchInterval: quoteInterval,
     enabled,
     gcTime: 0,
     retry: 2,
