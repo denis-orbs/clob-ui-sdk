@@ -66,8 +66,7 @@ export interface AnalyticsData {
   srcAmount: string;
   quoteIndex: number;
   slippage: number;
-  "quote-1-state": analyticsActionState;
-  "quote-2-state": string;
+  quoteState: analyticsActionState;
   clobDexPriceDiffPercent: string;
 
   approvalState: analyticsActionState;
@@ -103,6 +102,11 @@ export interface AnalyticsData {
   version: number;
   isDexTrade: boolean;
   onChainDexSwapState: analyticsActionState;
+
+  quoteAmountOut?: string;
+  quoteSerializedOrder?: string;
+  quoteMillis?: number;
+  quoteError?: string;
 }
 export enum SwapControl {
   FORCE = "1",
@@ -149,15 +153,7 @@ export interface Step {
 
 export type partner = "quickswap" | "thena";
 
-export type SwapArgs = {
-  fromToken?: any;
-  toToken?: any;
-  fromAmount?: string;
-  fromTokenUsd?: string;
-  toTokenUsd?: string;
-  dexAmountOut?: string;
-  onSwapSuccess?: () => void;
-};
+
 
 export type QuoteQueryArgs = {
   fromToken?: Token;
@@ -170,6 +166,36 @@ export type QuoteQueryArgs = {
 export type Partner = {
   name: string;
   explorerUrl: string;
-  normalizeToken?: (token: any) => Token;
+  normalizeToken: (token: any) => Token;
 };
 
+
+
+
+
+export type AnalyticsInitTradeArgs = {
+  srcToken?: Token;
+  dstToken?: Token;
+  walletAddress?: string;
+  slippage?: number;
+  srcAmount?: string;
+  dexAmountOut?: string;
+  dstTokenUsdValue?: string;
+  quoteOutAmount?: string;
+};
+
+
+export type UseLiquidityHubArgs = {
+  fromToken?: any;
+  toToken?: any;
+  fromAmount?: string;
+  fromTokenUsd?: string;
+  toTokenUsd?: string;
+  dexAmountOut?: string;
+  onSwapSuccess?: () => void;
+};
+
+
+export interface OnSwapCallbackArgs extends UseLiquidityHubArgs {
+  dexSwap?: () => void;
+}

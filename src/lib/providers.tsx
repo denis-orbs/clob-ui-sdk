@@ -5,10 +5,10 @@ import { analytics } from "../analytics";
 import { setWeb3Instance } from "@defi.org/web3-candies";
 import Web3 from "web3";
 import { SwapWizard } from "../swap-wizard/SwapWizard";
-import { useQuerySettings } from "../hooks";
 import { ThemeProvider } from "styled-components";
 import { darkTheme, lightTheme } from "./theme";
 import { DEFAULT_API_ENDPOINT, DEFAULT_QUOTE_INTERVAL } from "../consts";
+import { partner } from "./types";
 const client = new QueryClient();
 
 interface UISettings {
@@ -19,13 +19,13 @@ interface SharedProps {
   provider?: any;
   account?: string;
   chainId?: number;
-  partner: string;
+  partner: partner;
   slippage?: number;
-  location?: Location;
   theme?: "light" | "dark";
   apiUrl?: string;
   uiSettings?: UISettings;
   quoteInterval?: number;
+  disableAnalytics?: boolean;
 }
 const Context = createContext({} as SharedProps);
 
@@ -40,19 +40,17 @@ export const LiquidityHubProvider = ({
   chainId,
   partner,
   slippage,
-  location,
   uiSettings,
   theme,
   quoteInterval = DEFAULT_QUOTE_INTERVAL,
   apiUrl = DEFAULT_API_ENDPOINT,
+  disableAnalytics,
 }: Props) => {
   useEffect(() => {
-    if (chainId) {
-      analytics.init(chainId, partner);
+    if (!disableAnalytics) {
+      analytics.init(partner, chainId);
     }
   }, [partner, chainId]);
-
-  useQuerySettings(location);
 
   useEffect(() => {
     if (provider) {

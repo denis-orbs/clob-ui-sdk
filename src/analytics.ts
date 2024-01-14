@@ -1,35 +1,45 @@
 import BN from "bignumber.js";
-import { AnalyticsData, QuoteResponse } from "./lib/types";
-const ANALYTICS_VERSION = 0.1;
+import { useCallback } from "react";
+import { usePartner } from "./hooks";
+import { useLHContext } from "./lib";
+import {
+  AnalyticsData,
+  AnalyticsInitTradeArgs,
+  QuoteResponse,
+  Token,
+} from "./lib/types";
+const ANALYTICS_VERSION = 0.2;
 const BI_ENDPOINT = `https://bi.orbs.network/putes/liquidity-hub-ui-${ANALYTICS_VERSION}`;
 const DEX_PRICE_BETTER_ERROR = "Dex trade is better than Clob trade";
 
-
-
-const initialData: Partial<AnalyticsData> = {
-  _id: crypto.randomUUID(),
-  partner: "",
-  chainId: undefined,
-  isClobTrade: false,
-  isNotClobTradeReason: "null",
-  firstFailureSessionId: "null",
-  clobDexPriceDiffPercent: "null",
-  quoteIndex: 0,
-  "quote-1-state": "null",
-  approvalState: "null",
-  "quote-2-state": "null",
-  signatureState: "null",
-  swapState: "null",
-  wrapState: "null",
-  onChainClobSwapState: "null",
-  onChainDexSwapState: "null",
-  dexSwapState: "null",
-  dexSwapError: "null",
-  dexSwapTxHash: "null",
-  userWasApprovedBeforeTheTrade: "null",
-  isForceClob: false,
-  isDexTrade: false,
-  version: ANALYTICS_VERSION,
+const initialData = (
+  partner?: string,
+  chainId?: number
+): Partial<AnalyticsData> => {
+  return {
+    _id: crypto.randomUUID(),
+    partner,
+    chainId,
+    isClobTrade: false,
+    isNotClobTradeReason: "null",
+    firstFailureSessionId: "null",
+    clobDexPriceDiffPercent: "null",
+    quoteIndex: 0,
+    quoteState: "null",
+    approvalState: "null",
+    signatureState: "null",
+    swapState: "null",
+    wrapState: "null",
+    onChainClobSwapState: "null",
+    onChainDexSwapState: "null",
+    dexSwapState: "null",
+    dexSwapError: "null",
+    dexSwapTxHash: "null",
+    userWasApprovedBeforeTheTrade: "null",
+    isForceClob: false,
+    isDexTrade: false,
+    version: ANALYTICS_VERSION,
+  };
 };
 
 // const counter = () => {
@@ -42,11 +52,12 @@ const initialData: Partial<AnalyticsData> = {
 
 class Analytics {
   initialTimestamp = Date.now();
-  data = initialData;
+  data = {} as Partial<AnalyticsData>;
   firstFailureSessionId = "";
   abortController = new AbortController();
 
   private updateAndSend(values = {} as Partial<AnalyticsData>) {
+    if(!this.data.chainId || !this.data.partner) return 
     try {
       this.abortController.abort();
       this.abortController = new AbortController();
@@ -64,47 +75,75 @@ class Analytics {
       console.log("Analytics error", error);
     }
   }
-  init(chainId: number, partner: string) {
-    this.data = {
-      ...this.data,
-      chainId,
-      partner,
-    }
+  init(partner?: string, chainId?: number) {
+    this.data = initialData(partner, chainId);
   }
 
-  incrementQuoteIndex() {
+  onInitSwap({
+    dexAmountOut,
+    srcToken,
+    dstToken,
+    srcAmount,
+    slippage,
+    walletAddress,
+    dstTokenUsdValue,
+  }: AnalyticsInitTradeArgs) {
+    this.clearState();
+    const dstAmountOutUsd = new BN(dexAmountOut || "0")
+      .multipliedBy(dstTokenUsdValue || 0)
+      .dividedBy(new BN(10).pow(new BN(dstToken?.decimals || 0)))
+      .toNumber();
+
     this.updateAndSend({
-      quoteIndex: !this.data.quoteIndex ? 1 : this.data.quoteIndex + 1,
+      dexAmountOut,
+      dstAmountOutUsd,
+      srcTokenAddress: srcToken?.address,
+      srcTokenSymbol: srcToken?.symbol,
+      dstTokenAddress: dstToken?.address,
+      dstTokenSymbol: dstToken?.symbol,
+      srcAmount,
+      slippage,
+      walletAddress,
     });
   }
 
-  onQuoteRequest() {
-    this.updateAndSend({ [`quote-${this.data.quoteIndex}-state`]: "pending" });
+  onQuoteRequest(dexAmountOut?: string) {
+    this.updateAndSend({
+      quoteState: "pending",
+      quoteIndex: !this.data.quoteIndex ? 1 : this.data.quoteIndex + 1,
+      dexAmountOut,
+    });
   }
 
-  onQuoteSuccess(quoteResponse: QuoteResponse, time: number) {
-    this.updateAndSend({ [`quote-${this.data.quoteIndex}-state`]: "success" });
-    this.onQuoteData(quoteResponse, time);
+  onQuoteSuccess(time: number, quoteResponse: QuoteResponse) {
+    this.updateAndSend({
+      quoteState: "success",
+      ...this.handleQuoteData(quoteResponse, time),
+    });
   }
 
   onQuoteFailed(error: string, time: number, quoteResponse?: QuoteResponse) {
+    // we not treat DEX_PRICE_BETTER_ERROR as a failure
     if (error == DEX_PRICE_BETTER_ERROR) {
       this.updateAndSend({
         isNotClobTradeReason: DEX_PRICE_BETTER_ERROR,
-        [`quote-${this.data.quoteIndex}-state`]: "success",
+        quoteState: "success",
+        ...this.handleQuoteData(quoteResponse, time),
       });
     } else {
       this.updateAndSend({
-        [`quote-${this.data.quoteIndex}-error`]: error,
-        [`quote-${this.data.quoteIndex}-state`]: "failed",
-        isNotClobTradeReason: `quote-${this.data.quoteIndex}-failed`,
+        quoteError: error,
+        quoteState: "failed",
+        isNotClobTradeReason: `quote-failed`,
+        ...this.handleQuoteData(quoteResponse, time),
       });
     }
-
-    this.onQuoteData(quoteResponse, time);
   }
 
-  onQuoteData(quoteResponse?: QuoteResponse, time?: number) {
+  handleQuoteData(
+    quoteResponse?: QuoteResponse,
+    time?: number
+  ): Partial<AnalyticsData> {
     const getDiff = () => {
       if (!quoteResponse?.outAmount || !this.data.dexAmountOut) {
         return "";
@@ -116,21 +155,18 @@ class Analytics {
         .toFixed(2);
     };
 
-    this.updateAndSend({
-      [`quote-${this.data.quoteIndex}-amount-out`]: quoteResponse?.outAmount,
-      [`quote-${this.data.quoteIndex}-permit-data`]: quoteResponse?.permitData,
-      [`quote-${this.data.quoteIndex}-serialized-order`]:
-        quoteResponse?.serializedOrder,
-      [`quote-${this.data.quoteIndex}-quote-call-data`]:
-        quoteResponse?.callData,
-      [`quote-${this.data.quoteIndex}-quote-millis`]: time,
-      [`quote-${this.data.quoteIndex}-quote-raw-data`]: quoteResponse?.rawData,
+    return {
+      quoteAmountOut: quoteResponse?.outAmount,
+      quoteSerializedOrder: quoteResponse?.serializedOrder,
+      quoteMillis: time,
       clobDexPriceDiffPercent: getDiff(),
-    });
+    };
   }
 
-  onApprovedBeforeTheTrade(userWasApprovedBeforeTheTrade: boolean) {
-    this.updateAndSend({ userWasApprovedBeforeTheTrade });
+  onApprovedBeforeTheTrade(userWasApprovedBeforeTheTrade?: boolean) {
+    this.updateAndSend({
+      userWasApprovedBeforeTheTrade: Boolean(userWasApprovedBeforeTheTrade),
+    });
   }
 
   onApprovalRequest() {
@@ -182,9 +218,8 @@ class Analytics {
     this.updateAndSend({ wrapState: "pending" });
   }
 
-  onWrapSuccess(txHash: string, time: number) {
+  onWrapSuccess(time: number) {
     this.updateAndSend({
-      wrapTxHash: txHash,
       wrapMillis: time,
       wrapState: "success",
     });
@@ -257,7 +292,7 @@ class Analytics {
 
   clearState() {
     this.data = {
-      ...initialData,
+      ...initialData(this.data.partner, this.data.chainId),
       _id: crypto.randomUUID(),
       firstFailureSessionId: this.firstFailureSessionId,
     };
@@ -312,3 +347,36 @@ class Analytics {
 }
 
 export const analytics = new Analytics();
+
+interface InitSwapHookArgs {
+  srcToken: Token;
+  dstToken: Token;
+  dexAmountOut?: string;
+  dstTokenUsdValue?: string;
+  srcAmount?: string;
+  quoteOutAmount?: string;
+}
+
+export const useLiquidityHubAnalytics = () => {
+  const { account, slippage } = useLHContext();
+  const partner = usePartner();
+  const initSwap = useCallback(
+    (args: InitSwapHookArgs) => {
+      analytics.onInitSwap({
+        walletAddress: account,
+        slippage,
+        dexAmountOut: args.dexAmountOut,
+        srcToken: args.srcToken,
+        dstToken: args.dstToken,
+        dstTokenUsdValue: args.dstTokenUsdValue,
+        srcAmount: args.srcAmount,
+        quoteOutAmount: args.quoteOutAmount,
+      });
+    },
+    [account, slippage, partner]
+  );
+
+  return {
+    initSwap,
+  };
+};

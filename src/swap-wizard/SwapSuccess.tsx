@@ -27,7 +27,7 @@ export const SwapSuccess = () => {
     if (!toToken || !quote) {
       return "0";
     }
-    return amountUi(toToken!, new BN(quote.outAmount));
+    return amountUi(toToken!.decimals, new BN(quote.outAmount));
   }, [toToken, quote]);
 
   const toAmount = useFormatNumber({

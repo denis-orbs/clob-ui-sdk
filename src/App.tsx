@@ -1,18 +1,18 @@
 import { mockSwap } from "./mock";
 import { LiquidityHubProvider } from "./lib/providers";
 import "reactjs-popup/dist/index.css";
-import { useLHSwap } from "./lib";
+import { useLiquidityHub } from "./lib";
 
 const Buttons = () => {
-const { swapCallback } = useLHSwap({
-    fromToken: mockSwap.fromToken,
-    toToken: mockSwap.toToken,
-    fromAmount: mockSwap.fromAmount,
-    fromTokenUsd: mockSwap.fromTokenUsd,
-    toTokenUsd: mockSwap.toTokenUsd,
+const { swapCallback } = useLiquidityHub({
+  fromToken: mockSwap.fromToken,
+  toToken: mockSwap.toToken,
+  fromAmount: mockSwap.fromAmount,
+  fromTokenUsd: mockSwap.fromTokenUsd,
+  toTokenUsd: mockSwap.toTokenUsd,
 });
     
-  return <button onClick={() => swapCallback()}>Swap</button>;
+  return <button onClick={() => swapCallback({})}>Swap</button>;
 };
 
 function app() {

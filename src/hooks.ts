@@ -1,30 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
 import SwapImg from "./assets/swap.png";
 import Web3 from "web3";
-import { useLiquidityHubPersistedStore, useSwapState } from "./store";
+import { useSwapState } from "./store";
 import { WETH } from "./consts";
 import { isNative, useLHContext } from "./lib";
 import { partners } from "./lib/config";
 import { useNumericFormat } from "react-number-format";
-import { LH_CONTROL, Step, STEPS } from "./lib/types";
-
-export const useQuerySettings = (location?: Location) => {
-  const { setLHControl } = useLiquidityHubPersistedStore();
-  const lhControl = useMemo(
-    () =>
-      new URLSearchParams(location?.search).get("liquidity-hub")?.toLowerCase(),
-    [location?.search]
-  ) as LH_CONTROL | undefined;
-
-  useEffect(() => {
-    if (!lhControl) return;
-    if (lhControl === LH_CONTROL.RESET) {
-      setLHControl(undefined);
-      return;
-    }
-    setLHControl(lhControl);
-  }, [lhControl, setLHControl]);
-};
+import { Step, STEPS } from "./lib/types";
 
 export const useSwapSteps = (): { [key: string]: Step } => {
   const { fromToken, approved, stepStatuses } = useSwapState((store) => ({

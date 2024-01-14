@@ -10,7 +10,7 @@ import {
   isNativeAddress,
   hasWeb3Instance,
 } from "@defi.org/web3-candies";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import BN from "bignumber.js";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Web3 from "web3";
@@ -29,7 +29,7 @@ import { useLHContext } from "../providers";
 import { useLiquidityHubPersistedStore, useSwapState } from "../../store";
 import { isNative } from "lodash";
 import { useDebounce, useWETHAddress } from "../../hooks";
-import { amountBN, waitForTxResponse } from "../utils";
+import { amountBN, counter, waitForTxResponse } from "../utils";
 import { shouldReturnZeroOutAmount } from "../../utils";
 
 const useApprove = (fromTokenAddress?: string) => {
@@ -38,12 +38,13 @@ const useApprove = (fromTokenAddress?: string) => {
   const { updateStepStatus } = useSwapState();
   return useCallback(
     async (srcAmount: string) => {
+      const count = counter();
+      analytics.onApprovalRequest();
       if (!account) {
         throw new Error("No account");
       }
       updateStepStatus(STEPS.APPROVE, "loading");
       try {
-        // liquidityHubAnalytics.onApprovalRequest();
         if (!fromTokenAddress || !srcAmount) {
           throw new Error("Missing data");
         }
@@ -57,12 +58,11 @@ const useApprove = (fromTokenAddress?: string) => {
           maxUint256
         );
 
-
         await sendAndWaitForConfirmations(tx, { from: account });
-        // liquidityHubAnalytics.onApprovalSuccess(count());
+        analytics.onApprovalSuccess(count());
         updateStepStatus(STEPS.APPROVE, "success");
       } catch (error: any) {
-        // liquidityHubAnalytics.onApprovalFailed(error.message, count());
+        analytics.onApprovalFailed(error.message, count());
         throw new Error(error.message);
       } finally {
       }
@@ -77,19 +77,21 @@ const useSign = () => {
 
   return useCallback(
     async (permitData: any) => {
+      const count = counter();
+      analytics.onSignatureRequest();
       updateStepStatus(STEPS.SIGN, "loading");
       try {
         if (!account || !provider) {
           throw new Error("No account or library");
         }
-        // liquidityHubAnalytics.onSignatureRequest();
+
         setWeb3Instance(new Web3(provider));
         const signature = await signEIP712(account, permitData);
-        // liquidityHubAnalytics.onSignatureSuccess(signature, count());
+        analytics.onSignatureSuccess(signature, count());
         updateStepStatus(STEPS.SIGN, "success");
         return signature;
       } catch (error: any) {
-        // liquidityHubAnalytics.onSignatureFailed(error.message, count());
+        analytics.onSignatureFailed(error.message, count());
         throw new Error(error.message);
       }
     },
@@ -138,15 +140,16 @@ export const useApproved = (fromToken?: Token) => {
   );
 };
 
-const useSubmitTx = () => {
+const useSubmitSwap = () => {
   const { provider, account, chainId, apiUrl } = useLHContext();
   const { updateStepStatus } = useSwapState();
   return useCallback(
     async (args: SubmitTxArgs) => {
       updateStepStatus(STEPS.SEND_TX, "loading");
-      // const count = counter();
+      const count = counter();
+      analytics.onSwapRequest();
+
       try {
-        // liquidityHubAnalytics.onSwapRequest();
         const txHashResponse = await fetch(
           `${apiUrl}/swapx?chainId=${chainId}`,
           {
@@ -174,13 +177,13 @@ const useSubmitTx = () => {
           throw new Error("Missing txHash");
         }
         const tx = await waitForTxResponse(swap.txHash, new Web3(provider));
-        // liquidityHubAnalytics.onSwapSuccess(swap.txHash, count());
+        analytics.onSwapSuccess(swap.txHash, count());
         updateStepStatus(STEPS.SEND_TX, "success", { txHash: swap.txHash });
 
         return tx;
       } catch (error: any) {
         const message = error.message;
-        // liquidityHubAnalytics.onSwapFailed(message, count());
+        analytics.onSwapFailed(message, count());
         throw new Error(message);
       }
     },
@@ -189,9 +192,6 @@ const useSubmitTx = () => {
 };
 
 export const useSwap = () => {
-  const sign = useSign();
-  const submitTx = useSubmitTx();
-
   const {
     fromAmount,
     fromToken,
@@ -214,10 +214,13 @@ export const useSwap = () => {
 
   const approve = useApprove(fromToken?.address);
   const wrap = useWrap(fromToken);
+  const sign = useSign();
+  const submitSwap = useSubmitSwap();
 
   const wethAddress = useWETHAddress();
-  return useMutation({
-    mutationFn: async () => {
+
+  return useCallback(async () => {
+    try {
       if (!wethAddress) {
         throw new Error("Missing weth address");
       }
@@ -245,13 +248,12 @@ export const useSwap = () => {
         await wrap(fromAmount);
         inTokenAddress = wethAddress;
       }
-      // analytics.onApprovedBeforeTheTrade(approved);
       if (!approved) {
         await approve(fromAmount);
       }
-
+      analytics.onApprovedBeforeTheTrade(approved);
       const signature = await sign(quote.permitData);
-      const tx = await submitTx({
+      const tx = await submitSwap({
         srcToken: inTokenAddress,
         destToken: outTokenAddress,
         srcAmount: inAmountBN,
@@ -261,13 +263,26 @@ export const useSwap = () => {
       onSwapSuccess();
 
       return tx;
-    },
-    onError: (error) => {
+    } catch (error: any) {
       console.log("error", error);
       onSwapError(error.message);
       analytics.onClobFailure();
-    },
-  });
+    }
+  }, [
+    approve,
+    wrap,
+    sign,
+    submitSwap,
+    wethAddress,
+    fromAmount,
+    fromToken,
+    toToken,
+    quote,
+    onSwapSuccess,
+    onSwapError,
+    approved,
+    onSwapStart,
+  ]);
 };
 
 const useWrap = (fromToken?: Token) => {
@@ -277,6 +292,9 @@ const useWrap = (fromToken?: Token) => {
 
   return useCallback(
     async (srcAmount: string) => {
+      const count = counter();
+      analytics.onWrapRequest();
+
       if (!account) {
         throw new Error("Missing account");
       }
@@ -297,11 +315,11 @@ const useWrap = (fromToken?: Token) => {
         });
 
         // setFromAddress(WBNB_ADDRESS);
-        // analytics.onWrapSuccess(txHash, count());
+        analytics.onWrapSuccess(count());
         updateStepStatus(STEPS.WRAP, "success");
         return true;
       } catch (error: any) {
-        // analytics.onWrapFailed(error.message, count());
+        analytics.onWrapFailed(error.message, count());
         throw new Error(error.message);
       }
     },
@@ -330,9 +348,15 @@ export const useAllowanceQuery = (fromToken?: Token, fromAmount?: string) => {
   const debouncedFromAmount = useDebounce(fromAmount, 400);
   const isApproved = useApproved(fromToken);
   const { provider } = useLHContext();
-  const queryKey = useApproveQueryKey(fromToken?.address, debouncedFromAmount);
+  const { account, chainId } = useLHContext();
   return useQuery({
-    queryKey,
+    queryKey: [
+      QUERY_KEYS.useApprovedQuery,
+      account,
+      chainId,
+      fromToken?.address,
+      fromAmount,
+    ],
     queryFn: async () => {
       if (!fromToken || !debouncedFromAmount) return false;
       const approved = await isApproved(debouncedFromAmount);
@@ -343,6 +367,9 @@ export const useAllowanceQuery = (fromToken?: Token, fromAmount?: string) => {
 };
 
 const quote = async (args: QuoteArgs) => {
+  analytics.onQuoteRequest();
+  let result;
+  const count = counter();
   try {
     const response = await fetch(
       `${args.apiUrl}/quote?chainId=${args.chainId}`,
@@ -365,7 +392,7 @@ const quote = async (args: QuoteArgs) => {
         signal: args.signal,
       }
     );
-    const result = await response.json();
+    result = await response.json();
     if (!result) {
       throw new Error("No result");
     }
@@ -373,11 +400,10 @@ const quote = async (args: QuoteArgs) => {
     if (!result.outAmount || new BN(result.outAmount).eq(0)) {
       throw new Error(QUOTE_ERRORS.noLiquidity);
     }
-
+    analytics.onQuoteSuccess(count(), result);
     return result as QuoteResponse;
   } catch (error: any) {
-    console.log("quote error", error);
-
+    analytics.onQuoteFailed(error.message, count(), result);
     if (shouldReturnZeroOutAmount(error.message)) {
       return {
         outAmount: "0",
@@ -436,19 +462,25 @@ export const useQuote = ({
       apiUrl,
     ],
     queryFn: async ({ signal }) => {
-      const res = await quote({
-        inToken: fromAddress!,
-        outToken: toAddress!,
-        inAmount: amountBN(fromToken!, fromAmount!).toString(),
-        dexAmountOut,
-        slippage,
-        account,
-        signal,
-        chainId: chainId!,
-        partner,
-        apiUrl,
-      });
-      return res;
+      try {
+        const res = await quote({
+          inToken: fromAddress!,
+          outToken: toAddress!,
+          inAmount: amountBN(fromToken!, fromAmount!).toString(),
+          dexAmountOut,
+          slippage,
+          account,
+          signal,
+          chainId: chainId!,
+          partner,
+          apiUrl,
+        });
+        return res;
+      } catch (error: any) {
+        console.log(error.message);
+
+        throw new Error(error.message);
+      }
     },
     refetchInterval: quoteInterval,
     enabled,
@@ -471,7 +503,10 @@ export const useQuote = ({
   return { ...query, isLoading: error ? false : query.isLoading };
 };
 
-export const useIsClobTrade = (dexOutAmount?: string, lhOutAmount?: string) => {
+export const useIsLiquidityHubTrade = (
+  lhOutAmount?: string,
+  dexOutAmount?: string
+) => {
   const isFailed = useSwapState((s) => s.isFailed);
   const { liquidityHubEnabled, lhControl } = useLiquidityHubPersistedStore();
   return useMemo(() => {

@@ -15,7 +15,7 @@ export const quickswapTokenNormalize = (token: any): Token => {
 
 export const thenaTokenNormalize = (token: any): Token => {
     return {
-      address: token.address,
+      address: token.address || zeroAddress,
       symbol: token.symbol,
       decimals: token.decimals,
       logoUrl: token.logoURI?.replace("_1", ""),

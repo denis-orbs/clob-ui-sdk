@@ -23,6 +23,9 @@ export function Modal({
       closeOnDocumentClick={false}
       open={open}
       position="right center"
+      overlayStyle={{
+        background: "rgba(0, 0, 0, 0.5)",
+      }}
       contentStyle={{
         borderRadius: "20px",
         padding: "20px",

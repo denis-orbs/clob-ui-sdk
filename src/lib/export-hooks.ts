@@ -2,13 +2,15 @@ import { useLiquidityHubPersistedStore, useSwapState } from "../store";
 import {
   useAllowanceQuery,
   useApproveQueryKey,
-  useIsClobTrade,
+  useIsLiquidityHubTrade,
   useQuote,
 } from "./hooks";
-import { useMemo } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { SwapArgs } from "./types";
+import { useCallback, useMemo } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import { UseLiquidityHubArgs } from "./types";
 import { usePartner } from "../hooks";
+import { useLiquidityHubAnalytics } from "../analytics";
+import { useSwapWizard } from "../swap-wizard/useSwapWizard";
 
 export const useSettings = () => {
   const { liquidityHubEnabled, updateLiquidityHubEnabled } =
@@ -20,8 +22,9 @@ export const useSettings = () => {
   };
 };
 
-export const useLHSwap = (args: SwapArgs) => {
+export const useLiquidityHub = (args: UseLiquidityHubArgs) => {
   const partner = usePartner();
+  const analytics = useLiquidityHubAnalytics();
   const { fromToken, toToken } = useMemo(() => {
     if (!partner || !partner.normalizeToken) {
       return {
@@ -55,16 +58,30 @@ export const useLHSwap = (args: SwapArgs) => {
     fromAmount: args.fromAmount,
     dexAmountOut: args.dexAmountOut,
   });
-  const isLiquidityHubTrade = useIsClobTrade(
-    args.dexAmountOut,
-    quote?.outAmount
-  );
 
-  const { mutate} = useMutation({
-    mutationFn: async () => {        
-      if (!args.fromToken || !args.toToken || !args.fromAmount) {
-        return;
-      }
+  const isLiquidityHubTrade = useIsLiquidityHubTrade(
+    quote?.outAmount,
+    args.dexAmountOut
+  );
+    useSwapWizard();
+  const swapCallback = useCallback(
+    async ({ dexSwap }: { dexSwap?: () => void }) => {
+      try {
+        if (!fromToken || !toToken || !args.fromAmount) {
+          return;
+        }
+        analytics.initSwap({
+          srcToken: fromToken,
+          dstToken: toToken,
+          dexAmountOut: args.dexAmountOut,
+          dstTokenUsdValue: args.toTokenUsd,
+          srcAmount: args.fromAmount,
+          quoteOutAmount: quote?.outAmount,
+        });
+        if (!isLiquidityHubTrade) {
+          dexSwap?.();
+          return;
+        }
         updateState({
           fromToken,
           toToken,
@@ -73,22 +90,39 @@ export const useLHSwap = (args: SwapArgs) => {
           toTokenUsd: args.toTokenUsd,
           quote,
           showWizard: true,
-          dexOnSwapSuccess: args.onSwapSuccess
+          dexOnSwapSuccess: args.onSwapSuccess,
         });
-      return queryClient.ensureQueryData({ queryKey }) as Promise<boolean>;
+        // get allowance from cache, or wait for it to be fetched
+        const approved = await queryClient.ensureQueryData({
+          queryKey,
+        });
+
+        updateState({
+          approved: approved as boolean,
+        });
+      } catch (error) {}
     },
-    onSuccess: (approved) => {
-      updateState({
-        approved,
-      });
-    },
-  });
+    [
+      fromToken,
+      toToken,
+      args.fromAmount,
+      args.fromTokenUsd,
+      args.toTokenUsd,
+      quote,
+      isLiquidityHubTrade,
+      queryClient,
+      queryKey,
+      updateState,
+      args.onSwapSuccess,
+      args.dexAmountOut,
+    ]
+  );
 
   return {
     quote,
     quoteLoading,
     quoteError,
-    swapCallback: mutate,
+    swapCallback,
     swapLoading: swapStatus === "loading",
     swapError,
     isLiquidityHubTrade,
