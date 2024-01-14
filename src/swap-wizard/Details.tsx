@@ -30,7 +30,7 @@ const useToAmount = () => {
 export function SwapDetails() {
   const { fromToken, toToken, fromAmount, fromTokenUsd, toTokenUsd } =
     useSwapState();
-    const toAmount = useToAmount();
+  const toAmount = useToAmount();
 
   return (
     <StyledSwapDetails>
@@ -63,8 +63,17 @@ const TokenDisplay = ({
 }) => {
   if (!token) return null;
 
-  const _amount = useFormatNumber({value: amount})
-    
+  const _amount = useFormatNumber({ value: amount });
+
+  const totalUsd = useMemo(() => {
+    if (!usd || !amount) {
+      return "0";
+    }
+    return new BN(usd).times(amount).toString();
+  }, [usd, amount]);
+
+  const _totalUsd = useFormatNumber({ value: totalUsd });
+
   return (
     <StyledTokenDisplay>
       <Title>{title}</Title>
@@ -77,7 +86,7 @@ const TokenDisplay = ({
           <TokenAmount>
             {_amount} {token.symbol}
           </TokenAmount>
-          {usd && <USD>${usd}</USD>}
+          {_totalUsd && <USD>${_totalUsd}</USD>}
         </FlexColumn>
         <StyledLogo src={token.logoUrl} />
       </FlexRow>

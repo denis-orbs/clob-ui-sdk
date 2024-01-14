@@ -56,13 +56,13 @@ class Analytics {
   firstFailureSessionId = "";
   abortController = new AbortController();
 
-  private updateAndSend(values = {} as Partial<AnalyticsData>) {
+  private async  updateAndSend(values = {} as Partial<AnalyticsData>) {
     if(!this.data.chainId || !this.data.partner) return 
     try {
       this.abortController.abort();
       this.abortController = new AbortController();
       this.data = { ...this.data, ...values };
-      fetch(BI_ENDPOINT, {
+      await fetch(BI_ENDPOINT, {
         method: "POST",
         signal: this.abortController.signal,
         headers: {
@@ -88,7 +88,6 @@ class Analytics {
     walletAddress,
     dstTokenUsdValue,
   }: AnalyticsInitTradeArgs) {
-    this.clearState();
     const dstAmountOutUsd = new BN(dexAmountOut || "0")
       .multipliedBy(dstTokenUsdValue || 0)
       .dividedBy(new BN(10).pow(new BN(dstToken?.decimals || 0)))

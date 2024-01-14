@@ -7,17 +7,16 @@ import { Button, PoweredByOrbs } from "../components";
 import { useSwapState } from "../store";
 import { useMemo } from "react";
 import { isNative } from "../lib";
-import { useSwap } from "../lib/hooks";
+import { useAllowanceQuery, useSwap } from "../lib/hooks";
 
 import { STEPS } from "../lib/types";
 export const SwapMain = () => {
   const steps = useSwapSteps();
-  const approved = useSwapState((store) => store.approved);
 
   return (
     <Container>
       <SwapDetails />
-      {approved == null ? null : (
+      {!steps ? null : (
         <>
           <StyledSteps $gap={15} style={{ width: "100%" }}>
             <Divider />
@@ -37,29 +36,37 @@ export const SwapMain = () => {
 };
 
 const SubmitButton = () => {
-  const buttonText = useSubmitButtonText();
-  const { mutate, isPending } = useSwap();
+  const { text, onClick, isPending } = useSubmitButton();
 
   if (isPending) return null;
-  return <StyledSubmit onClick={mutate}>{buttonText}</StyledSubmit>;
+  return <StyledSubmit onClick={onClick}>{text}</StyledSubmit>;
 };
 
-const useSubmitButtonText = () => {
-  const { fromToken, approved } = useSwapState((store) => ({
+const useSubmitButton = () => {
+  const { fromToken, fromAmount } = useSwapState((store) => ({
     fromToken: store.fromToken,
-    approved: store.approved,
+    fromAmount: store.fromAmount,
   }));
+  const isPending = useSwapState((store) => store.swapStatus) === "loading";
+  const { data: approved } = useAllowanceQuery(fromToken, fromAmount);
+
+  const swap = useSwap();
+
+  console.log("button");
 
   return useMemo(() => {
-    if (isNative(fromToken?.address)) {
-      return "Wrap and swap";
-    }
-    if (!approved) {
-      return "Approve and swap";
-    }
+    const getText = () => {
+      if (isNative(fromToken?.address)) return "Wrap and swap";
+      if (!approved) return "Approve and swap";
+      return "Sign and Swap";
+    };
 
-    return "Sign and Swap";
-  }, [approved, fromToken]);
+    return {
+      text: getText(),
+      onClick: swap,
+      isPending,
+    };
+  }, [approved, fromToken, isPending, swap]);
 };
 
 const Container = styled(FlexColumn)`

@@ -24,7 +24,9 @@ export function Modal({
       open={open}
       position="right center"
       overlayStyle={{
-        background: "rgba(0, 0, 0, 0.5)",
+        background: "rgba(0, 0, 0, 0.65)",
+        backdropFilter: "blur(10px)",
+        zIndex: 10,
       }}
       contentStyle={{
         borderRadius: "20px",
@@ -37,6 +39,7 @@ export function Modal({
         transition: "all 0.3s ease-in-out",
         background: theme.colors.mainBackground,
         border: `1px solid ${theme.colors.border}`,
+        zIndex: 100,
       }}
     >
       <FlexColumn $gap={30}>

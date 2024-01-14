@@ -185,6 +185,8 @@ const useSubmitSwap = () => {
         const message = error.message;
         analytics.onSwapFailed(message, count());
         throw new Error(message);
+      } finally {
+        analytics.clearState();
       }
     },
     [provider, account, chainId, updateStepStatus]
@@ -199,14 +201,12 @@ export const useSwap = () => {
     quote,
     onSwapSuccess,
     onSwapError,
-    approved,
     onSwapStart,
   } = useSwapState((store) => ({
     fromToken: store.fromToken,
     toToken: store.toToken,
     fromAmount: store.fromAmount,
     quote: store.quote,
-    approved: store.approved,
     onSwapSuccess: store.onSwapSuccess,
     onSwapError: store.onSwapError,
     onSwapStart: store.onSwapStart,
@@ -216,6 +216,8 @@ export const useSwap = () => {
   const wrap = useWrap(fromToken);
   const sign = useSign();
   const submitSwap = useSubmitSwap();
+
+  const { data: approved } = useAllowanceQuery(fromToken, fromAmount);
 
   const wethAddress = useWETHAddress();
 
@@ -362,7 +364,13 @@ export const useAllowanceQuery = (fromToken?: Token, fromAmount?: string) => {
       const approved = await isApproved(debouncedFromAmount);
       return approved;
     },
-    enabled: !!provider,
+    enabled:
+      !!provider &&
+      !!fromToken &&
+      !!account &&
+      !!chainId &&
+      !!debouncedFromAmount,
+    staleTime: Infinity,
   });
 };
 
@@ -426,9 +434,9 @@ export const useQuote = ({
   const { account, slippage, chainId, partner, quoteInterval, apiUrl } =
     useLHContext();
   const [error, setError] = useState(false);
-  const { isFailed, pauseQuote } = useSwapState((s) => ({
+  const { isFailed, disableQuote } = useSwapState((s) => ({
     isFailed: s.isFailed,
-    pauseQuote: s.showWizard,
+    disableQuote: s.showWizard,
   }));
 
   const { fromAddress, toAddress } = useMemo(() => {
@@ -449,7 +457,7 @@ export const useQuote = ({
     !!fromAmount &&
     !isFailed &&
     liquidityHubEnabled &&
-    !pauseQuote;
+    !disableQuote;
 
   const query = useQuery({
     queryKey: [
@@ -462,25 +470,18 @@ export const useQuote = ({
       apiUrl,
     ],
     queryFn: async ({ signal }) => {
-      try {
-        const res = await quote({
-          inToken: fromAddress!,
-          outToken: toAddress!,
-          inAmount: amountBN(fromToken!, fromAmount!).toString(),
-          dexAmountOut,
-          slippage,
-          account,
-          signal,
-          chainId: chainId!,
-          partner,
-          apiUrl,
-        });
-        return res;
-      } catch (error: any) {
-        console.log(error.message);
-
-        throw new Error(error.message);
-      }
+      return quote({
+        inToken: fromAddress!,
+        outToken: toAddress!,
+        inAmount: amountBN(fromToken!, fromAmount!).toString(),
+        dexAmountOut,
+        slippage,
+        account,
+        signal,
+        chainId: chainId!,
+        partner,
+        apiUrl,
+      });
     },
     refetchInterval: quoteInterval,
     enabled,
@@ -503,26 +504,29 @@ export const useQuote = ({
   return { ...query, isLoading: error ? false : query.isLoading };
 };
 
-export const useIsLiquidityHubTrade = (
+export const useTradeOwner = (
   lhOutAmount?: string,
   dexOutAmount?: string
-) => {
+): "dex" | "lh" | undefined => {
   const isFailed = useSwapState((s) => s.isFailed);
   const { liquidityHubEnabled, lhControl } = useLiquidityHubPersistedStore();
   return useMemo(() => {
-    if (!dexOutAmount || !lhOutAmount) return;
+    if (new BN(dexOutAmount || "0").lte(0) && new BN(lhOutAmount || "0").lte(0))
+      return;
 
     if (lhControl === LH_CONTROL.SKIP || !liquidityHubEnabled) {
-      return false;
+      return "dex";
     }
     if (lhControl === LH_CONTROL.FORCE) {
       console.log("LH force mode on");
-      return true;
+      return "lh";
     }
     if (isFailed) {
-      return false;
+      return "dex";
     }
 
-    return new BN(lhOutAmount || "0").gt(new BN(dexOutAmount));
+    return new BN(lhOutAmount || "0").gt(new BN(dexOutAmount || "0"))
+      ? "lh"
+      : "dex";
   }, [dexOutAmount, lhOutAmount, lhControl, isFailed, liquidityHubEnabled]);
 };

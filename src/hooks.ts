@@ -7,14 +7,27 @@ import { isNative, useLHContext } from "./lib";
 import { partners } from "./lib/config";
 import { useNumericFormat } from "react-number-format";
 import { Step, STEPS } from "./lib/types";
+import { useAllowanceQuery } from "./lib/hooks";
 
-export const useSwapSteps = (): { [key: string]: Step } => {
-  const { fromToken, approved, stepStatuses } = useSwapState((store) => ({
+export const useSwapSteps = (): { [key: string]: Step } | undefined => {
+  const { fromToken, stepStatuses, fromAmount } = useSwapState((store) => ({
     fromToken: store.fromToken,
-    approved: store.approved,
     stepStatuses: store.stepStatuses,
+    fromAmount: store.fromAmount,
   }));
+
+  const { data: approved, isLoading: aprovedLoading } = useAllowanceQuery(
+    fromToken,
+    fromAmount
+  );
+
+  console.log({ approved });
+  
+
   return useMemo(() => {
+    if (aprovedLoading) {
+      return undefined;
+    }
     const shouldWrap = isNative(fromToken?.address);
     const steps = {
       ...(shouldWrap && {
@@ -48,7 +61,7 @@ export const useSwapSteps = (): { [key: string]: Step } => {
     };
 
     return steps;
-  }, [fromToken, stepStatuses]);
+  }, [fromToken, stepStatuses, approved, aprovedLoading]);
 };
 
 export const useWeb3 = () => {

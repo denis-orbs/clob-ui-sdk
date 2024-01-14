@@ -20,7 +20,6 @@ interface SwapStateValues {
   failures?: number;
   txHash?: string;
   quote?: QuoteResponse;
-  approved?: boolean;
   stepStatuses?: { [key: string]: ActionStatus };
   swapStatus: ActionStatus;
   swapError?: string;
@@ -52,7 +51,6 @@ const initialSwapState: SwapStateValues = {
   failures: 0,
   txHash: undefined,
   quote: undefined,
-  approved: undefined,
   stepStatuses: undefined,
   swapStatus: undefined,
   swapError: undefined,

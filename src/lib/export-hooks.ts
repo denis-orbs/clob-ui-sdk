@@ -2,7 +2,7 @@ import { useLiquidityHubPersistedStore, useSwapState } from "../store";
 import {
   useAllowanceQuery,
   useApproveQueryKey,
-  useIsLiquidityHubTrade,
+  useTradeOwner,
   useQuote,
 } from "./hooks";
 import { useCallback, useMemo } from "react";
@@ -10,7 +10,6 @@ import { useQueryClient } from "@tanstack/react-query";
 import { UseLiquidityHubArgs } from "./types";
 import { usePartner } from "../hooks";
 import { useLiquidityHubAnalytics } from "../analytics";
-import { useSwapWizard } from "../swap-wizard/useSwapWizard";
 
 export const useSettings = () => {
   const { liquidityHubEnabled, updateLiquidityHubEnabled } =
@@ -59,48 +58,38 @@ export const useLiquidityHub = (args: UseLiquidityHubArgs) => {
     dexAmountOut: args.dexAmountOut,
   });
 
-  const isLiquidityHubTrade = useIsLiquidityHubTrade(
+  const tradeOwner = useTradeOwner(
     quote?.outAmount,
     args.dexAmountOut
   );
-    useSwapWizard();
+  
   const swapCallback = useCallback(
-    async ({ dexSwap }: { dexSwap?: () => void }) => {
-      try {
-        if (!fromToken || !toToken || !args.fromAmount) {
-          return;
-        }
-        analytics.initSwap({
-          srcToken: fromToken,
-          dstToken: toToken,
-          dexAmountOut: args.dexAmountOut,
-          dstTokenUsdValue: args.toTokenUsd,
-          srcAmount: args.fromAmount,
-          quoteOutAmount: quote?.outAmount,
-        });
-        if (!isLiquidityHubTrade) {
-          dexSwap?.();
-          return;
-        }
-        updateState({
-          fromToken,
-          toToken,
-          fromAmount: args.fromAmount,
-          fromTokenUsd: args.fromTokenUsd,
-          toTokenUsd: args.toTokenUsd,
-          quote,
-          showWizard: true,
-          dexOnSwapSuccess: args.onSwapSuccess,
-        });
-        // get allowance from cache, or wait for it to be fetched
-        const approved = await queryClient.ensureQueryData({
-          queryKey,
-        });
-
-        updateState({
-          approved: approved as boolean,
-        });
-      } catch (error) {}
+    async (dexSwap?: () => void) => {
+      if (!fromToken || !toToken || !args.fromAmount) {
+        return;
+      }
+      analytics.initSwap({
+        srcToken: fromToken,
+        dstToken: toToken,
+        dexAmountOut: args.dexAmountOut,
+        dstTokenUsdValue: args.toTokenUsd,
+        srcAmount: args.fromAmount,
+        quoteOutAmount: quote?.outAmount,
+      });
+      if (tradeOwner === "dex") {
+        dexSwap?.();
+        return;
+      }
+      updateState({
+        fromToken,
+        toToken,
+        fromAmount: args.fromAmount,
+        fromTokenUsd: args.fromTokenUsd,
+        toTokenUsd: args.toTokenUsd,
+        quote,
+        showWizard: true,
+        dexOnSwapSuccess: args.onSwapSuccess,
+      });
     },
     [
       fromToken,
@@ -109,7 +98,7 @@ export const useLiquidityHub = (args: UseLiquidityHubArgs) => {
       args.fromTokenUsd,
       args.toTokenUsd,
       quote,
-      isLiquidityHubTrade,
+      tradeOwner,
       queryClient,
       queryKey,
       updateState,
@@ -125,6 +114,7 @@ export const useLiquidityHub = (args: UseLiquidityHubArgs) => {
     swapCallback,
     swapLoading: swapStatus === "loading",
     swapError,
-    isLiquidityHubTrade,
+    tradeOwner,
+    outAmount: tradeOwner === "lh" ? quote?.outAmount : tradeOwner === 'dex' ? args.dexAmountOut : undefined,
   };
 };
