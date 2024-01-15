@@ -1,6 +1,6 @@
 {
   "name": "@orbs-network/liquidity-hub-lib",
-  "version": "0.0.35",
+  "version": "0.0.36",
   "main": "./dist/main.umd.js",
   "module": "./dist/main.es.js",
   "types": "./dist/index.d.ts",
@@ -15,7 +15,7 @@
   ],
   "scripts": {
     "dev": "vite",
-    "build": "rm -rf dist && tsc && vite build && cp -R dist ../playground/node_modules/@orbs-network/liquidity-hub-lib && cp -R dist ../../twap-integrations/thena-front-end/node_modules/@orbs-network/liquidity-hub-lib",
+    "build": "rm -rf dist && tsc && vite build && cp -R dist ../playground/node_modules/@orbs-network/liquidity-hub-lib && cp -R dist ../../twap-integrations/thena-front-end/node_modules/@orbs-network/liquidity-hub-lib &&  cp -R dist ../../twap-integrations/quickswap-interface-v2/node_modules/@orbs-network/liquidity-hub-lib",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
     "preview": "vite preview"
   },
