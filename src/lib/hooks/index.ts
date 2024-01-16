@@ -17,7 +17,6 @@ import Web3 from "web3";
 import {
   STEPS,
   SubmitTxArgs,
-  QuoteArgs,
   QuoteQueryArgs,
   QuoteResponse,
   Token,
@@ -29,7 +28,7 @@ import { useLHContext } from "../providers";
 import { useLiquidityHubPersistedStore, useSwapState } from "../../store";
 import { isNative } from "lodash";
 import { useDebounce, useWETHAddress } from "../../hooks";
-import { amountBN, counter, waitForTxResponse } from "../utils";
+import { amountUi, counter, waitForTxReceipt } from "../utils";
 import { shouldReturnZeroOutAmount } from "../../utils";
 
 const useApprove = (fromTokenAddress?: string) => {
@@ -127,9 +126,7 @@ export const useApproved = (fromToken?: Token) => {
           ?.allowance(account, permit2Address)
           .call();
 
-        return BN(allowance?.toString() || "0").gte(
-          amountBN(fromToken, srcAmount)
-        );
+        return BN(allowance?.toString() || "0").gte(srcAmount);
       } catch (error) {
         console.log({ error }, "approved error");
 
@@ -176,7 +173,7 @@ const useSubmitSwap = () => {
         if (!swap.txHash) {
           throw new Error("Missing txHash");
         }
-        const tx = await waitForTxResponse(swap.txHash, new Web3(provider));
+        const tx = await waitForTxReceipt(new Web3(provider), swap.txHash);
         analytics.onSwapSuccess(swap.txHash, count());
         updateStepStatus(STEPS.SEND_TX, "success", { txHash: swap.txHash });
 
@@ -244,7 +241,6 @@ export const useSwap = () => {
 
       let inTokenAddress = isNativeIn ? zeroAddress : fromToken.address;
       const outTokenAddress = isNativeOut ? zeroAddress : toToken.address;
-      const inAmountBN = amountBN(fromToken, fromAmount).toString();
 
       if (isNativeIn) {
         await wrap(fromAmount);
@@ -258,7 +254,7 @@ export const useSwap = () => {
       const tx = await submitSwap({
         srcToken: inTokenAddress,
         destToken: outTokenAddress,
-        srcAmount: inAmountBN,
+        srcAmount: fromAmount,
         signature,
         quote,
       });
@@ -313,7 +309,7 @@ const useWrap = (fromToken?: Token) => {
         const tx = fromTokenContract?.methods?.deposit();
         await sendAndWaitForConfirmations(tx, {
           from: account,
-          value: amountBN(fromToken, srcAmount).toString(),
+          value: srcAmount,
         });
 
         // setFromAddress(WBNB_ADDRESS);
@@ -327,23 +323,6 @@ const useWrap = (fromToken?: Token) => {
     },
     [account, updateStepStatus, getFromTokenContract]
   );
-};
-
-export const useApproveQueryKey = (
-  fromTokenAddress?: string,
-  fromAmount?: string
-) => {
-  const { account, chainId } = useLHContext();
-
-  return useMemo(() => {
-    return [
-      QUERY_KEYS.useApprovedQuery,
-      account,
-      chainId,
-      fromTokenAddress,
-      fromAmount,
-    ];
-  }, [account, fromTokenAddress, chainId, fromAmount]);
 };
 
 export const useAllowanceQuery = (fromToken?: Token, fromAmount?: string) => {
@@ -374,65 +353,17 @@ export const useAllowanceQuery = (fromToken?: Token, fromAmount?: string) => {
   });
 };
 
-const quote = async (args: QuoteArgs) => {
-  analytics.onQuoteRequest();
-  let result;
-  const count = counter();
-  try {
-    const response = await fetch(
-      `${args.apiUrl}/quote?chainId=${args.chainId}`,
-      {
-        method: "POST",
-        body: JSON.stringify({
-          inToken: isNative(args.inToken) ? zeroAddress : args.inToken,
-          outToken: isNative(args.outToken) ? zeroAddress : args.outToken,
-          inAmount: args.inAmount,
-          outAmount: !args.dexAmountOut
-            ? "-1"
-            : new BN(args.dexAmountOut).gt(0)
-            ? args.dexAmountOut
-            : "0",
-          user: args.account,
-          slippage: args.slippage,
-          qs: encodeURIComponent(window.location.hash),
-          partner: args.partner.toLowerCase(),
-        }),
-        signal: args.signal,
-      }
-    );
-    result = await response.json();
-    if (!result) {
-      throw new Error("No result");
-    }
-
-    if (!result.outAmount || new BN(result.outAmount).eq(0)) {
-      throw new Error(QUOTE_ERRORS.noLiquidity);
-    }
-    analytics.onQuoteSuccess(count(), result);
-    return result as QuoteResponse;
-  } catch (error: any) {
-    analytics.onQuoteFailed(error.message, count(), result);
-    if (shouldReturnZeroOutAmount(error.message)) {
-      return {
-        outAmount: "0",
-      } as QuoteResponse;
-    } else {
-      throw new Error(error.message);
-    }
-  }
-};
-
 export const useQuote = ({
   fromToken,
   toToken,
   fromAmount,
   dexAmountOut,
+  slippage,
 }: QuoteQueryArgs) => {
   const liquidityHubEnabled = useLiquidityHubPersistedStore(
     (s) => s.liquidityHubEnabled
   );
-  const { account, slippage, chainId, partner, quoteInterval, apiUrl } =
-    useLHContext();
+  const { account, chainId, partner, quoteInterval, apiUrl } = useLHContext();
   const [error, setError] = useState(false);
   const { isFailed, disableQuote } = useSwapState((s) => ({
     isFailed: s.isFailed,
@@ -470,18 +401,60 @@ export const useQuote = ({
       apiUrl,
     ],
     queryFn: async ({ signal }) => {
-      return quote({
-        inToken: fromAddress!,
-        outToken: toAddress!,
-        inAmount: amountBN(fromToken!, fromAmount!).toString(),
-        dexAmountOut,
-        slippage,
-        account,
-        signal,
-        chainId: chainId!,
-        partner,
-        apiUrl,
-      });
+      analytics.onQuoteRequest();
+      let result;
+      const count = counter();
+      try {
+        const response = await fetch(
+          `${apiUrl}/quote?chainId=${chainId}`,
+          {
+            method: "POST",
+            body: JSON.stringify({
+              inToken: fromAddress,
+              outToken: toAddress,
+              inAmount: fromAmount,
+              outAmount: !dexAmountOut
+                ? "-1"
+                : new BN(dexAmountOut).gt(0)
+                ? dexAmountOut
+                : "0",
+              user: account,
+              slippage: slippage,
+              qs: encodeURIComponent(
+                window.location.hash || window.location.search
+              ),
+              partner: partner.toLowerCase(),
+              sessionId: analytics.data.sessionId,
+            }),
+            signal,
+          }
+        );
+        result = await response.json();
+        if (!result) {
+          throw new Error("No result");
+        }
+        if (result.sessionId) {
+          analytics.setSessionId(result.sessionId);
+        }
+        if (!result.outAmount || new BN(result.outAmount).eq(0)) {
+          throw new Error(QUOTE_ERRORS.noLiquidity);
+        }
+        analytics.onQuoteSuccess(count(), result);
+        return {
+          ...result,
+          outAmountUI: amountUi(toToken?.decimals, new BN(result.outAmount)),
+        } as QuoteResponse;
+      } catch (error: any) {
+        analytics.onQuoteFailed(error.message, count(), result);
+        if (shouldReturnZeroOutAmount(error.message)) {
+          return {
+            outAmount: "0",
+            outAmountUI: '0',
+          } as QuoteResponse;
+        } else {
+          throw new Error(error.message);
+        }
+      }
     },
     refetchInterval: quoteInterval,
     enabled,

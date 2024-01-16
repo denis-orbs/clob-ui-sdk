@@ -348,31 +348,32 @@ class Analytics {
 export const analytics = new Analytics();
 
 interface InitSwapHookArgs {
-  srcToken: Token;
-  dstToken: Token;
+  fromToken: Token;
+  toToken: Token;
   dexAmountOut?: string;
-  dstTokenUsdValue?: string;
-  srcAmount?: string;
+  dstTokenUsdValue?: string | number;
+  srcAmountUI?: string;
   quoteOutAmount?: string;
+  slippage?: number;
 }
 
 export const useLiquidityHubAnalytics = () => {
-  const { account, slippage } = useLHContext();
+  const { account } = useLHContext();
   const partner = usePartner();
   const initSwap = useCallback(
     (args: InitSwapHookArgs) => {
       analytics.onInitSwap({
         walletAddress: account,
-        slippage,
+        slippage: args.slippage,
         dexAmountOut: args.dexAmountOut,
-        srcToken: args.srcToken,
-        dstToken: args.dstToken,
-        dstTokenUsdValue: args.dstTokenUsdValue,
-        srcAmount: args.srcAmount,
+        srcToken: args.fromToken,
+        dstToken: args.toToken,
+        dstTokenUsdValue: new BN(args.dstTokenUsdValue || "0").toString(),
+        srcAmount: args.srcAmountUI,
         quoteOutAmount: args.quoteOutAmount,
       });
     },
-    [account, slippage, partner]
+    [account, partner]
   );
 
   return {

@@ -20,7 +20,6 @@ interface SharedProps {
   account?: string;
   chainId?: number;
   partner: partner;
-  slippage?: number;
   theme?: "light" | "dark";
   apiUrl?: string;
   uiSettings?: UISettings;
@@ -39,7 +38,6 @@ export const LiquidityHubProvider = ({
   account,
   chainId,
   partner,
-  slippage,
   uiSettings,
   theme,
   quoteInterval = DEFAULT_QUOTE_INTERVAL,
@@ -70,7 +68,6 @@ export const LiquidityHubProvider = ({
           account,
           chainId,
           partner,
-          slippage,
           uiSettings,
           theme,
           quoteInterval,

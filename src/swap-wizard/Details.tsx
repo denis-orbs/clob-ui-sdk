@@ -1,36 +1,25 @@
 import { useMemo } from "react";
 import styled from "styled-components";
 import { Logo } from "../components";
-import { amountUi } from "../lib";
 import { useSwapState } from "../store";
 import { FlexColumn, FlexRow, Text } from "../styles";
 import BN from "bignumber.js";
 import { Token } from "../lib/types";
-import { useFormatNumber } from "../hooks";
+import { useFormatNumber, useFromAmountUI, useToAmountUI } from "../hooks";
 
 const StyledSwapDetails = styled(FlexColumn)`
   width: 100%;
   gap: 25px;
 `;
 
-const useToAmount = () => {
-  const { quote, toToken } = useSwapState((store) => ({
-    toToken: store.toToken,
-    quote: store.quote,
-  }));
-
-  return useMemo(() => {
-    if (!toToken || !quote) {
-      return "0";
-    }
-    return amountUi(toToken!.decimals, new BN(quote.outAmount));
-  }, [toToken, quote]);
-};
 
 export function SwapDetails() {
-  const { fromToken, toToken, fromAmount, fromTokenUsd, toTokenUsd } =
+  const { fromToken, toToken, fromTokenUsd, toTokenUsd } =
     useSwapState();
-  const toAmount = useToAmount();
+
+
+    const fromAmount = useFromAmountUI();
+    const toAmount = useToAmountUI();
 
   return (
     <StyledSwapDetails>
@@ -58,12 +47,13 @@ const TokenDisplay = ({
 }: {
   amount?: string;
   token?: Token;
-  usd?: string;
+  usd?: string | number;
   title: string;
 }) => {
   if (!token) return null;
 
-  const _amount = useFormatNumber({ value: amount });
+
+
 
   const totalUsd = useMemo(() => {
     if (!usd || !amount) {
@@ -84,7 +74,7 @@ const TokenDisplay = ({
       >
         <FlexColumn $alignItems="flex-start">
           <TokenAmount>
-            {_amount} {token.symbol}
+            {amount} {token.symbol}
           </TokenAmount>
           {_totalUsd && <USD>${_totalUsd}</USD>}
         </FlexColumn>

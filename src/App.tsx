@@ -13,7 +13,7 @@ const updateState = useSwapState((s) => s.updateState);
 
 function app() {
   return (
-    <LiquidityHubProvider theme="dark" partner='quickswap' chainId={137} slippage={0.5}>
+    <LiquidityHubProvider theme="dark" partner='quickswap' chainId={137}>
       <Buttons />
     </LiquidityHubProvider>
   );

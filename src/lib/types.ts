@@ -119,6 +119,7 @@ export interface QuoteResponse {
   serializedOrder: string;
   callData: string;
   rawData: any;
+  outAmountUI: string;
 }
 
 export interface Token  {
@@ -160,6 +161,7 @@ export type QuoteQueryArgs = {
   toToken?: Token;
   fromAmount?: string;
   dexAmountOut?: string;
+  slippage?: number;
 };
 
 
@@ -189,10 +191,12 @@ export type UseLiquidityHubArgs = {
   fromToken?: any;
   toToken?: any;
   fromAmount?: string;
-  fromTokenUsd?: string;
-  toTokenUsd?: string;
+  fromAmountUI?: string;
+  fromTokenUsd?: string | number;
+  toTokenUsd?: string | number;
   dexAmountOut?: string;
-  onSwapSuccess?: () => void;
+  dexAmountOutUI?: string;
+slippage?: number;
 };
 
 

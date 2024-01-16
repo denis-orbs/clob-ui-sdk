@@ -3,12 +3,12 @@ import SwapImg from "./assets/swap.png";
 import Web3 from "web3";
 import { useSwapState } from "./store";
 import { WETH } from "./consts";
-import { isNative, useLHContext } from "./lib";
+import { amountUi, isNative, useLHContext } from "./lib";
 import { partners } from "./lib/config";
 import { useNumericFormat } from "react-number-format";
 import { Step, STEPS } from "./lib/types";
 import { useAllowanceQuery } from "./lib/hooks";
-
+import BN from "bignumber.js";
 export const useSwapSteps = (): { [key: string]: Step } | undefined => {
   const { fromToken, stepStatuses, fromAmount } = useSwapState((store) => ({
     fromToken: store.fromToken,
@@ -22,7 +22,6 @@ export const useSwapSteps = (): { [key: string]: Step } | undefined => {
   );
 
   console.log({ approved });
-  
 
   return useMemo(() => {
     if (aprovedLoading) {
@@ -145,4 +144,37 @@ export const useFormatNumber = ({
   });
 
   return result.value?.toString();
+};
+
+export const useFromAmountUI = () => {
+  const { fromAmount, fromToken } = useSwapState((store) => ({
+    fromAmount: store.fromAmount,
+    fromToken: store.fromToken,
+  }));
+
+  const amount = useMemo(() => {
+    if (!fromAmount) return "";
+    return amountUi(fromToken?.decimals, new BN(fromAmount));
+  }, [fromAmount, fromToken]);
+
+  return useFormatNumber({
+    value: amount,
+  });
+};
+
+
+export const useToAmountUI = () => {
+  const { toToken, quote } = useSwapState((store) => ({
+    quote: store.quote,
+    toToken: store.toToken,
+  }));
+
+  const amount = useMemo(() => {
+    if (!quote) return "";
+    return amountUi(toToken?.decimals, new BN(quote.outAmount));
+  }, [quote, toToken]);
+
+  return useFormatNumber({
+    value: amount,
+  });
 };

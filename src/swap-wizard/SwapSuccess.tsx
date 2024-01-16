@@ -1,39 +1,29 @@
 import { Check, ArrowRight } from "react-feather";
 import styled from "styled-components";
 import { Logo } from "../components";
-import { useFormatNumber, usePartner } from "../hooks";
-import { amountUi } from "../lib";
+import {
+  useFromAmountUI,
+  usePartner,
+  useToAmountUI,
+} from "../hooks";
 import { useSwapState } from "../store";
 import { FlexRow, FlexColumn, Text, Link } from "../styles";
-import BN from "bignumber.js";
-import { useMemo } from "react";
 import { Token } from "../lib/types";
 
 export const SwapSuccess = () => {
   const partner = usePartner();
-  const { fromToken, toToken, fromAmount, txHash, quote } = useSwapState(
+  const { fromToken, toToken, txHash } = useSwapState(
     (store) => {
       return {
         fromToken: store.fromToken,
         toToken: store.toToken,
-        fromAmount: store.fromAmount,
         txHash: store.txHash,
-        quote: store.quote,
       };
     }
   );
+  const fromAmount = useFromAmountUI();
 
-  const toAmountRaw = useMemo(() => {
-    if (!toToken || !quote) {
-      return "0";
-    }
-    return amountUi(toToken!.decimals, new BN(quote.outAmount));
-  }, [toToken, quote]);
-
-  const toAmount = useFormatNumber({
-    value: toAmountRaw,
-  });
-
+  const toAmount = useToAmountUI();
   return (
     <StyledSuccess>
       <StyledSuccessLogo>
@@ -78,12 +68,11 @@ const SuccessToken = ({
   token?: Token;
   amount?: string;
 }) => {
-  const _amount = useFormatNumber({ value: amount });
   return (
     <FlexRow>
       <StyledLogo src={token?.logoUrl} />
       <StyledTokenText>
-        {_amount} {token?.symbol}
+        {amount} {token?.symbol}
       </StyledTokenText>
     </FlexRow>
   );

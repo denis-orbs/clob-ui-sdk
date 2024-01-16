@@ -1,16 +1,11 @@
 import { useLiquidityHubPersistedStore, useSwapState } from "../store";
-import {
-  useAllowanceQuery,
-  useApproveQueryKey,
-  useTradeOwner,
-  useQuote,
-} from "./hooks";
+import { useAllowanceQuery, useTradeOwner, useQuote } from "./hooks";
 import { useCallback, useMemo } from "react";
-import { useQueryClient } from "@tanstack/react-query";
 import { UseLiquidityHubArgs } from "./types";
 import { usePartner } from "../hooks";
 import { useLiquidityHubAnalytics } from "../analytics";
-
+import BN from "bignumber.js";
+import { amountBN, amountUi } from "./utils";
 export const useSettings = () => {
   const { liquidityHubEnabled, updateLiquidityHubEnabled } =
     useLiquidityHubPersistedStore();
@@ -24,6 +19,8 @@ export const useSettings = () => {
 export const useLiquidityHub = (args: UseLiquidityHubArgs) => {
   const partner = usePartner();
   const analytics = useLiquidityHubAnalytics();
+
+  // parse tokens
   const { fromToken, toToken } = useMemo(() => {
     if (!partner || !partner.normalizeToken) {
       return {
@@ -37,10 +34,28 @@ export const useLiquidityHub = (args: UseLiquidityHubArgs) => {
     };
   }, [partner, args.fromToken?.address, args.toToken?.address]);
 
+  // handling amounts formats from dex (wei or ui amount)
+  const fromAmount = useMemo(() => {
+    if (!args.fromAmount && !args.fromAmountUI) {
+      return undefined;
+    }
+
+    return args.fromAmount
+      ? args.fromAmount
+      : amountBN(fromToken, args.fromAmountUI || "0").toString();
+  }, [args.fromAmount, args.fromAmountUI, fromToken]);
+
+  const dexAmountOut = useMemo(() => {
+    if (!args.dexAmountOut && !args.dexAmountOutUI) {
+      return undefined;
+    }
+    return args.dexAmountOut
+      ? args.dexAmountOut
+      : amountBN(toToken, args.dexAmountOutUI || "0").toString();
+  }, [args.dexAmountOut, args.dexAmountOutUI, toToken]);
+
   // poll for allowance
-  useAllowanceQuery(fromToken, args.fromAmount);
-  const queryKey = useApproveQueryKey(fromToken?.address, args.fromAmount);
-  const queryClient = useQueryClient();
+  useAllowanceQuery(fromToken, fromAmount);
   const { swapStatus, swapError, updateState } = useSwapState((store) => ({
     swapStatus: store.swapStatus,
     swapError: store.swapError,
@@ -54,56 +69,58 @@ export const useLiquidityHub = (args: UseLiquidityHubArgs) => {
   } = useQuote({
     fromToken,
     toToken,
-    fromAmount: args.fromAmount,
-    dexAmountOut: args.dexAmountOut,
+    fromAmount,
+    dexAmountOut,
+    slippage: args.slippage,
   });
 
-  const tradeOwner = useTradeOwner(
-    quote?.outAmount,
-    args.dexAmountOut
-  );
-  
+  const tradeOwner = useTradeOwner(quote?.outAmount, dexAmountOut);
+
   const swapCallback = useCallback(
-    async (dexSwap?: () => void) => {
-      if (!fromToken || !toToken || !args.fromAmount) {
+    async ({
+      dexSwap,
+      onSwapSuccess,
+    }: {
+      dexSwap: () => void;
+      onSwapSuccess?: () => void;
+    }) => {
+      if (!fromToken || !toToken || !fromAmount) {
         return;
       }
       analytics.initSwap({
-        srcToken: fromToken,
-        dstToken: toToken,
-        dexAmountOut: args.dexAmountOut,
+        fromToken,
+        toToken,
+        dexAmountOut,
         dstTokenUsdValue: args.toTokenUsd,
-        srcAmount: args.fromAmount,
+        srcAmountUI: amountUi(fromToken, new BN(fromAmount)),
         quoteOutAmount: quote?.outAmount,
+        slippage: args.slippage,
       });
       if (tradeOwner === "dex") {
-        dexSwap?.();
+        dexSwap();
         return;
       }
       updateState({
         fromToken,
         toToken,
-        fromAmount: args.fromAmount,
+        fromAmount,
         fromTokenUsd: args.fromTokenUsd,
         toTokenUsd: args.toTokenUsd,
         quote,
         showWizard: true,
-        dexOnSwapSuccess: args.onSwapSuccess,
+        onSwapSuccessCallback: onSwapSuccess,
       });
     },
     [
       fromToken,
       toToken,
-      args.fromAmount,
+      fromAmount,
       args.fromTokenUsd,
       args.toTokenUsd,
       quote,
       tradeOwner,
-      queryClient,
-      queryKey,
       updateState,
-      args.onSwapSuccess,
-      args.dexAmountOut,
+      dexAmountOut,
     ]
   );
 
@@ -115,6 +132,11 @@ export const useLiquidityHub = (args: UseLiquidityHubArgs) => {
     swapLoading: swapStatus === "loading",
     swapError,
     tradeOwner,
-    outAmount: tradeOwner === "lh" ? quote?.outAmount : tradeOwner === 'dex' ? args.dexAmountOut : undefined,
+    outAmount:
+      tradeOwner === "lh"
+        ? quote?.outAmount
+        : tradeOwner === "dex"
+        ? args.dexAmountOut
+        : undefined,
   };
 };

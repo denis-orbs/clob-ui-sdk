@@ -14,8 +14,8 @@ interface SwapStateValues {
   fromToken?: Token;
   toToken?: Token;
   fromAmount?: string;
-  fromTokenUsd?: string;
-  toTokenUsd?: string;
+  fromTokenUsd?: string | number;
+  toTokenUsd?: string | number;
   isFailed?: boolean;
   failures?: number;
   txHash?: string;
@@ -23,7 +23,7 @@ interface SwapStateValues {
   stepStatuses?: { [key: string]: ActionStatus };
   swapStatus: ActionStatus;
   swapError?: string;
-  dexOnSwapSuccess?: () => void;
+  onSwapSuccessCallback?: () => void;
 }
 
 interface SwapState extends SwapStateValues {
@@ -54,7 +54,7 @@ const initialSwapState: SwapStateValues = {
   stepStatuses: undefined,
   swapStatus: undefined,
   swapError: undefined,
-  dexOnSwapSuccess: undefined,
+  onSwapSuccessCallback: undefined,
 };
 
 export const useSwapState = create<SwapState>((set, get) => ({
@@ -73,7 +73,7 @@ export const useSwapState = create<SwapState>((set, get) => ({
 
   updateState: (state) => set({ ...state }),
   onSwapSuccess: () => {
-    get().dexOnSwapSuccess?.();
+    get().onSwapSuccessCallback?.();
     set({
       isFailed: false,
       failures: 0,
