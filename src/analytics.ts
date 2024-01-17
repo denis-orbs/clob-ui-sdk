@@ -1,7 +1,8 @@
 import BN from "bignumber.js";
 import { useCallback } from "react";
-import { usePartner } from "./hooks";
-import { useLHContext } from "./lib";
+import { usePartner } from "./lib/hooks";
+import { useLHContext } from "./lib/provider";
+
 import {
   AnalyticsData,
   AnalyticsInitTradeArgs,

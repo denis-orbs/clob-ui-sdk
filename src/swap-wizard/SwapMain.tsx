@@ -1,15 +1,15 @@
 import { StepComponent } from "./Step";
 import styled from "styled-components";
-import { useSwapSteps } from "../hooks";
 import { SwapDetails } from "./Details";
 import { FlexColumn } from "../styles";
 import { Button, PoweredByOrbs } from "../components";
 import { useSwapState } from "../store";
 import { useMemo } from "react";
-import { isNative } from "../lib";
-import { useAllowanceQuery, useSwap } from "../lib/hooks";
 
 import { STEPS } from "../lib/types";
+import { useSwapSteps } from "../lib/hooks";
+import { useAllowanceQuery, useSwap } from "../lib/swap-logic";
+import { isNative } from "../lib/utils";
 export const SwapMain = () => {
   const steps = useSwapSteps();
 

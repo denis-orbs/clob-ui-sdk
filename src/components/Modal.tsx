@@ -26,7 +26,7 @@ export function Modal({
       overlayStyle={{
         background: "rgba(0, 0, 0, 0.65)",
         backdropFilter: "blur(10px)",
-        zIndex: 10,
+        zIndex: 99999,
       }}
       contentStyle={{
         borderRadius: "20px",
@@ -39,7 +39,6 @@ export function Modal({
         transition: "all 0.3s ease-in-out",
         background: theme.colors.mainBackground,
         border: `1px solid ${theme.colors.border}`,
-        zIndex: 100,
       }}
     >
       <FlexColumn $gap={30}>
@@ -66,6 +65,7 @@ const animation = keyframes`
 `;
 
 const StyledPopup = styled(Popup)`
+  position: relative;
   &-content {
     -webkit-animation: ${animation} 0.3s forwards;
     animation: ${animation} 0.3s forwards;

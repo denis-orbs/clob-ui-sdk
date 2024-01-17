@@ -5,7 +5,7 @@ import { useSwapState } from "../store";
 import { FlexColumn, FlexRow, Text } from "../styles";
 import BN from "bignumber.js";
 import { Token } from "../lib/types";
-import { useFormatNumber, useFromAmountUI, useToAmountUI } from "../hooks";
+import { useFromAmountUI, useToAmountUI, useFormatNumber } from "../lib/hooks";
 
 const StyledSwapDetails = styled(FlexColumn)`
   width: 100%;

@@ -1,14 +1,10 @@
 import { Check, ArrowRight } from "react-feather";
 import styled from "styled-components";
 import { Logo } from "../components";
-import {
-  useFromAmountUI,
-  usePartner,
-  useToAmountUI,
-} from "../hooks";
 import { useSwapState } from "../store";
 import { FlexRow, FlexColumn, Text, Link } from "../styles";
 import { Token } from "../lib/types";
+import { usePartner, useFromAmountUI, useToAmountUI } from "../lib/hooks";
 
 export const SwapSuccess = () => {
   const partner = usePartner();

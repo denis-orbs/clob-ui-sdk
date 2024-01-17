@@ -122,7 +122,7 @@ export interface QuoteResponse {
   outAmountUI: string;
 }
 
-export interface Token  {
+export interface Token {
   address: string;
   decimals: number;
   symbol: string;
@@ -154,8 +154,6 @@ export interface Step {
 
 export type partner = "quickswap" | "thena";
 
-
-
 export type QuoteQueryArgs = {
   fromToken?: Token;
   toToken?: Token;
@@ -164,16 +162,41 @@ export type QuoteQueryArgs = {
   slippage?: number;
 };
 
-
 export type Partner = {
   name: string;
   explorerUrl: string;
   normalizeToken: (token: any) => Token;
 };
 
+export type QuickSwapToken = {
+  decimals: number;
+  symbol: string;
+  name: string;
+  chainId: number;
+  address: string;
+  tokenInfo: {
+    name: string;
+    address: string;
+    symbol: string;
+    decimals: number;
+    chainId: number;
+    logoURI: string;
+  };
+  tags: any[];
+  isNative: boolean;
+  isToken: boolean;
+};
 
+export type ThenaToken = {
+  name: string;
+  symbol: string;
+  decimals: number;
+  chainId: number;
+  address: string;
+  logoURI: string;
+};
 
-
+export type DappToken = ThenaToken | QuickSwapToken;
 
 export type AnalyticsInitTradeArgs = {
   srcToken?: Token;
@@ -186,7 +209,6 @@ export type AnalyticsInitTradeArgs = {
   quoteOutAmount?: string;
 };
 
-
 export type UseLiquidityHubArgs = {
   fromToken?: any;
   toToken?: any;
@@ -196,9 +218,8 @@ export type UseLiquidityHubArgs = {
   toTokenUsd?: string | number;
   dexAmountOut?: string;
   dexAmountOutUI?: string;
-slippage?: number;
+  slippage?: number;
 };
-
 
 export interface OnSwapCallbackArgs extends UseLiquidityHubArgs {
   dexSwap?: () => void;

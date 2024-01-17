@@ -1,5 +1,5 @@
 
-import { LiquidityHubProvider } from "./lib/providers";
+import { LiquidityHubProvider } from "./lib/provider";
 import "reactjs-popup/dist/index.css";
 import { useSwapState } from "./store";
 

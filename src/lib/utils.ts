@@ -1,9 +1,11 @@
-import { isNativeAddress, TokenData, parsebn } from "@defi.org/web3-candies";
+import { isNativeAddress, parsebn } from "@defi.org/web3-candies";
 import BN from "bignumber.js";
 import Web3 from "web3";
+import { QUOTE_ERRORS } from "../consts";
+import { Token } from "./types";
 
 export const isNative = (address?: string) => isNativeAddress(address || "");
-export const amountBN = (token: TokenData, amount: string) =>
+export const amountBN = (token: Token, amount: string) =>
   parsebn(amount).times(new BN(10).pow(token?.decimals || 0));
 export const amountUi = (decimals?: number, amount?: BN) => {
   if (!decimals || !amount) return "";
@@ -29,7 +31,7 @@ export async function waitForTxReceipt(web3: Web3, txHash: string) {
       if (mined) {
         return true;
       }
-      if(revertMessage) {
+      if (revertMessage) {
         throw new Error(revertMessage);
       }
     } catch (error: any) {
@@ -52,15 +54,11 @@ export async function getTransactionDetails(
 ): Promise<{ mined: boolean; revertMessage?: string }> {
   try {
     const receipt = await web3.eth.getTransactionReceipt(txHash);
-    console.log({ receipt });
-    
     if (!receipt) {
       return {
         mined: false,
       };
     }
-
-    const mined = receipt.status ? true : false;
 
     let revertMessage = "";
 
@@ -76,10 +74,14 @@ export async function getTransactionDetails(
     }
 
     return {
-      mined,
+      mined: receipt.status ? true : false,
       revertMessage,
     };
   } catch (error: any) {
     throw new Error(`Failed to fetch transaction details: ${error.message}`);
   }
 }
+
+export const shouldReturnZeroOutAmount = (error: string) => {
+  return error === QUOTE_ERRORS.tns;
+};

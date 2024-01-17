@@ -1,14 +1,17 @@
 import { useEffect, useMemo, useState } from "react";
-import SwapImg from "./assets/swap.png";
+import SwapImg from "../assets/swap.png";
 import Web3 from "web3";
-import { useSwapState } from "./store";
-import { WETH } from "./consts";
-import { amountUi, isNative, useLHContext } from "./lib";
-import { partners } from "./lib/config";
+
 import { useNumericFormat } from "react-number-format";
-import { Step, STEPS } from "./lib/types";
-import { useAllowanceQuery } from "./lib/hooks";
+
 import BN from "bignumber.js";
+import { WETH } from "../consts";
+import { useSwapState } from "../store";
+import { partners } from "./config";
+import { useAllowanceQuery } from "./swap-logic";
+import { DappToken, Step, STEPS, Token } from "./types";
+import { isNative, amountUi, amountBN } from "./utils";
+import { useLHContext } from "./provider";
 export const useSwapSteps = (): { [key: string]: Step } | undefined => {
   const { fromToken, stepStatuses, fromAmount } = useSwapState((store) => ({
     fromToken: store.fromToken,
@@ -162,7 +165,6 @@ export const useFromAmountUI = () => {
   });
 };
 
-
 export const useToAmountUI = () => {
   const { toToken, quote } = useSwapState((store) => ({
     quote: store.quote,
@@ -177,4 +179,47 @@ export const useToAmountUI = () => {
   return useFormatNumber({
     value: amount,
   });
+};
+
+export const useModifyTokens = (fromToken?: DappToken, toToken?: DappToken) => {
+  const partner = usePartner();
+
+  return useMemo(() => {
+    if (!partner || !partner.normalizeToken) {
+      return {
+        fromToken: undefined,
+        toToken: undefined,
+      };
+    }
+    return {
+      fromToken: fromToken && partner.normalizeToken(fromToken),
+      toToken: toToken && partner.normalizeToken(toToken),
+    };
+  }, [partner, fromToken?.address, toToken?.address]);
+};
+
+export const useModifyAmounts = (
+  fromToken?: Token,
+  toToken?: Token,
+  fromAmount?: string,
+  fromAmountUI?: string,
+  dexAmountOut?: string,
+  dexAmountOutUI?: string
+) => {
+  const _fromAmount = useMemo(() => {
+    if (!fromAmount && !fromAmountUI) return undefined;
+    if (fromAmount) return fromAmount;
+    return fromToken ?  amountBN(fromToken, fromAmountUI || "0").toString() : undefined;
+  }, [fromAmount, fromAmountUI, fromToken]);
+
+  const _dexAmountOut = useMemo(() => {
+    if (!dexAmountOut && !dexAmountOutUI) return undefined;
+    if (dexAmountOut) return dexAmountOut;
+      return toToken ?  amountBN(toToken, dexAmountOutUI || "0").toString() : undefined;
+  }, [dexAmountOut, dexAmountOutUI, toToken]);
+
+  return {
+    fromAmount: _fromAmount,
+    dexAmountOut: _dexAmountOut,
+  };
 };

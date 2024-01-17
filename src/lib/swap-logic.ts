@@ -20,16 +20,27 @@ import {
   QuoteQueryArgs,
   QuoteResponse,
   Token,
+  UseLiquidityHubArgs,
   LH_CONTROL,
-} from "../types";
-import { analytics } from "../../analytics";
-import { QUERY_KEYS, QUOTE_ERRORS } from "../../consts";
-import { useLHContext } from "../providers";
-import { useLiquidityHubPersistedStore, useSwapState } from "../../store";
+} from "./types";
+import { useLiquidityHubAnalytics, analytics } from "../analytics";
+import { QUERY_KEYS, QUOTE_ERRORS } from "../consts";
+import { useLHContext } from "./provider";
+import { useLiquidityHubPersistedStore, useSwapState } from "../store";
 import { isNative } from "lodash";
-import { useDebounce, useWETHAddress } from "../../hooks";
-import { amountUi, counter, waitForTxReceipt } from "../utils";
-import { shouldReturnZeroOutAmount } from "../../utils";
+import {
+  useDebounce,
+  useModifyAmounts,
+  useModifyTokens,
+  useWETHAddress,
+} from "./hooks";
+import {
+  amountUi,
+  counter,
+  shouldReturnZeroOutAmount,
+  waitForTxReceipt,
+} from "./utils";
+import { numericFormatter } from "react-number-format";
 
 const useApprove = (fromTokenAddress?: string) => {
   const { account } = useLHContext();
@@ -111,8 +122,7 @@ const useFromTokenContractCallback = () => {
     [provider, wethAddress]
   );
 };
-
-export const useApproved = (fromToken?: Token) => {
+const useApproved = (fromToken?: Token) => {
   const { account } = useLHContext();
   const getFromTokenContract = useFromTokenContractCallback();
   return useCallback(
@@ -405,30 +415,27 @@ export const useQuote = ({
       let result;
       const count = counter();
       try {
-        const response = await fetch(
-          `${apiUrl}/quote?chainId=${chainId}`,
-          {
-            method: "POST",
-            body: JSON.stringify({
-              inToken: fromAddress,
-              outToken: toAddress,
-              inAmount: fromAmount,
-              outAmount: !dexAmountOut
-                ? "-1"
-                : new BN(dexAmountOut).gt(0)
-                ? dexAmountOut
-                : "0",
-              user: account,
-              slippage: slippage,
-              qs: encodeURIComponent(
-                window.location.hash || window.location.search
-              ),
-              partner: partner.toLowerCase(),
-              sessionId: analytics.data.sessionId,
-            }),
-            signal,
-          }
-        );
+        const response = await fetch(`${apiUrl}/quote?chainId=${chainId}`, {
+          method: "POST",
+          body: JSON.stringify({
+            inToken: fromAddress,
+            outToken: toAddress,
+            inAmount: fromAmount,
+            outAmount: !dexAmountOut
+              ? "-1"
+              : new BN(dexAmountOut).gt(0)
+              ? dexAmountOut
+              : "0",
+            user: account,
+            slippage: slippage,
+            qs: encodeURIComponent(
+              window.location.hash || window.location.search
+            ),
+            partner: partner.toLowerCase(),
+            sessionId: analytics.data.sessionId,
+          }),
+          signal,
+        });
         result = await response.json();
         if (!result) {
           throw new Error("No result");
@@ -442,14 +449,17 @@ export const useQuote = ({
         analytics.onQuoteSuccess(count(), result);
         return {
           ...result,
-          outAmountUI: amountUi(toToken?.decimals, new BN(result.outAmount)),
+          outAmountUI: numericFormatter(
+            amountUi(toToken?.decimals, new BN(result.outAmount)),
+            { decimalScale: 4, thousandSeparator: "," }
+          ),
         } as QuoteResponse;
       } catch (error: any) {
         analytics.onQuoteFailed(error.message, count(), result);
         if (shouldReturnZeroOutAmount(error.message)) {
           return {
             outAmount: "0",
-            outAmountUI: '0',
+            outAmountUI: "0",
           } as QuoteResponse;
         } else {
           throw new Error(error.message);
@@ -477,6 +487,16 @@ export const useQuote = ({
   return { ...query, isLoading: error ? false : query.isLoading };
 };
 
+export const useSettings = () => {
+  const { liquidityHubEnabled, updateLiquidityHubEnabled } =
+    useLiquidityHubPersistedStore();
+
+  return {
+    liquidityHubEnabled,
+    updateLiquidityHubEnabled,
+  };
+};
+
 export const useTradeOwner = (
   lhOutAmount?: string,
   dexOutAmount?: string
@@ -502,4 +522,114 @@ export const useTradeOwner = (
       ? "lh"
       : "dex";
   }, [dexOutAmount, lhOutAmount, lhControl, isFailed, liquidityHubEnabled]);
+};
+
+export const useLiquidityHub = (args: UseLiquidityHubArgs) => {
+  const { fromToken, toToken } = useModifyTokens(args.fromToken, args.toToken);
+  const { fromAmount, dexAmountOut } = useModifyAmounts(
+    fromToken,
+    toToken,
+    args.fromAmount,
+    args.fromAmountUI,
+    args.dexAmountOut,
+    args.dexAmountOutUI
+  );
+  useAllowanceQuery(fromToken, fromAmount);
+
+  const { slippage, fromTokenUsd, toTokenUsd } = args;
+  const { swapStatus, swapError, updateState } = useSwapState((store) => ({
+    swapStatus: store.swapStatus,
+    swapError: store.swapError,
+    updateState: store.updateState,
+  }));
+
+  const {
+    data: quote,
+    isLoading: quoteLoading,
+    error: quoteError,
+  } = useQuote({
+    fromToken,
+    toToken,
+    fromAmount,
+    dexAmountOut,
+    slippage,
+  });
+
+  const tradeOwner = useTradeOwner(quote?.outAmount, dexAmountOut);
+  const analytics = useLiquidityHubAnalytics();
+  const analyticsInitSwap = () => {
+    return useCallback(() => {
+      if (!fromToken || !toToken || !fromAmount) return;
+      analytics.initSwap({
+        fromToken,
+        toToken,
+        dexAmountOut,
+        dstTokenUsdValue: toTokenUsd,
+        srcAmountUI: amountUi(fromToken.decimals, new BN(fromAmount)),
+        quoteOutAmount: quote?.outAmount,
+        slippage,
+      });
+    }, [
+      fromToken,
+      toToken,
+      dexAmountOut,
+      toTokenUsd,
+      fromAmount,
+      quote,
+      slippage,
+      analytics.initSwap,
+    ]);
+  };
+  const confirmSwap = useCallback(
+    async (onSwapSuccess?: () => void) => {
+      if (!fromToken) {
+        console.error("from token missing");
+        return;
+      }
+      if (!toToken) {
+        console.error("to token missing");
+        return;
+      }
+
+      if (!fromAmount) {
+        console.error("from amount missing");
+        return;
+      }
+      updateState({
+        fromToken,
+        toToken,
+        fromAmount,
+        fromTokenUsd,
+        toTokenUsd,
+        quote,
+        showWizard: true,
+        onSwapSuccessCallback: onSwapSuccess,
+      });
+    },
+    [
+      fromToken,
+      toToken,
+      fromAmount,
+      fromTokenUsd,
+      toTokenUsd,
+      quote,
+      tradeOwner,
+      updateState,
+      dexAmountOut,
+      analyticsInitSwap,
+    ]
+  );
+
+  return {
+    quote,
+    quoteLoading,
+    quoteError,
+    confirmSwap,
+    swapLoading: swapStatus === "loading",
+    swapError,
+    tradeOwner,
+    analytics: {
+      initSwap: analyticsInitSwap,
+    },
+  };
 };
