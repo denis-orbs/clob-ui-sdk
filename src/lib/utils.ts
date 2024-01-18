@@ -29,10 +29,16 @@ export async function waitForTxReceipt(web3: Web3, txHash: string) {
       );
 
       if (mined) {
-        return true;
+        return {
+          mined,
+          revertMessage: undefined,
+        };
       }
       if (revertMessage) {
-        throw new Error(revertMessage);
+        return {
+          mined: false,
+          revertMessage,
+        };
       }
     } catch (error: any) {
       throw new Error(error.message);

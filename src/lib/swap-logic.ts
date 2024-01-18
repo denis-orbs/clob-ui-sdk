@@ -23,7 +23,7 @@ import {
   UseLiquidityHubArgs,
   LH_CONTROL,
 } from "./types";
-import { useLiquidityHubAnalytics, analytics } from "../analytics";
+import { analytics } from "../analytics";
 import { QUERY_KEYS, QUOTE_ERRORS } from "../consts";
 import { useLHContext } from "./provider";
 import { useLiquidityHubPersistedStore, useSwapState } from "../store";
@@ -152,6 +152,7 @@ const useSubmitSwap = () => {
   const { updateStepStatus } = useSwapState();
   return useCallback(
     async (args: SubmitTxArgs) => {
+      let txDetails;
       updateStepStatus(STEPS.SEND_TX, "loading");
       const count = counter();
       analytics.onSwapRequest();
@@ -183,17 +184,23 @@ const useSubmitSwap = () => {
         if (!swap.txHash) {
           throw new Error("Missing txHash");
         }
-        const tx = await waitForTxReceipt(new Web3(provider), swap.txHash);
         analytics.onSwapSuccess(swap.txHash, count());
-        updateStepStatus(STEPS.SEND_TX, "success", { txHash: swap.txHash });
-
-        return tx;
+        txDetails = await waitForTxReceipt(new Web3(provider), swap.txHash);
+        if (txDetails?.mined) {
+          updateStepStatus(STEPS.SEND_TX, "success", {
+            txHash: swap.txHash,
+          });
+          analytics.onClobOnChainSwapSuccess();
+        } else {
+          throw new Error(txDetails?.revertMessage);
+        }
       } catch (error: any) {
-        const message = error.message;
-        analytics.onSwapFailed(message, count());
-        throw new Error(message);
-      } finally {
-        analytics.clearState();
+        analytics.onSwapFailed(
+          error.message,
+          count(),
+          !!txDetails?.revertMessage
+        );
+        throw new Error(error.message);
       }
     },
     [provider, account, chainId, updateStepStatus]
@@ -269,12 +276,12 @@ export const useSwap = () => {
         quote,
       });
       onSwapSuccess();
-
       return tx;
     } catch (error: any) {
-      console.log("error", error);
       onSwapError(error.message);
       analytics.onClobFailure();
+    } finally {
+      analytics.clearState();
     }
   }, [
     approve,
@@ -526,6 +533,7 @@ export const useTradeOwner = (
 
 export const useLiquidityHub = (args: UseLiquidityHubArgs) => {
   const { fromToken, toToken } = useModifyTokens(args.fromToken, args.toToken);
+  const { partner } = useLHContext();
   const { fromAmount, dexAmountOut } = useModifyAmounts(
     fromToken,
     toToken,
@@ -556,30 +564,31 @@ export const useLiquidityHub = (args: UseLiquidityHubArgs) => {
   });
 
   const tradeOwner = useTradeOwner(quote?.outAmount, dexAmountOut);
-  const analytics = useLiquidityHubAnalytics();
-  const analyticsInitSwap = () => {
-    return useCallback(() => {
-      if (!fromToken || !toToken || !fromAmount) return;
-      analytics.initSwap({
-        fromToken,
-        toToken,
-        dexAmountOut,
-        dstTokenUsdValue: toTokenUsd,
-        srcAmountUI: amountUi(fromToken.decimals, new BN(fromAmount)),
-        quoteOutAmount: quote?.outAmount,
-        slippage,
-      });
-    }, [
-      fromToken,
-      toToken,
+  const analyticsInitSwap = useCallback(() => {
+    if (!fromToken || !toToken || !fromAmount) return;
+    analytics.onInitSwap({
+      fromToken: args.fromToken,
+      toToken: args.toToken,
       dexAmountOut,
-      toTokenUsd,
-      fromAmount,
-      quote,
+      dstTokenUsdValue: toTokenUsd,
+      srcAmount: fromAmount,
       slippage,
-      analytics.initSwap,
-    ]);
-  };
+      partner,
+      tradeType: "BEST_TRADE",
+      tradeOutAmount: tradeOwner === 'dex' ? dexAmountOut : quote?.outAmount,
+    });
+  }, [
+    fromToken,
+    toToken,
+    dexAmountOut,
+    toTokenUsd,
+    fromAmount,
+    quote,
+    slippage,
+    partner,
+    tradeOwner,
+  ]);
+
   const confirmSwap = useCallback(
     async (onSwapSuccess?: () => void) => {
       if (!fromToken) {
@@ -629,7 +638,7 @@ export const useLiquidityHub = (args: UseLiquidityHubArgs) => {
     swapError,
     tradeOwner,
     analytics: {
-      initSwap: analyticsInitSwap,
+      analyticsInitSwap,
     },
   };
 };

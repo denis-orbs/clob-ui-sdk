@@ -198,15 +198,22 @@ export type ThenaToken = {
 
 export type DappToken = ThenaToken | QuickSwapToken;
 
+type tradeType = "LIMIT" | "TWAP" | "V2" | "V3" | "BEST_TRADE";
+
 export type AnalyticsInitTradeArgs = {
-  srcToken?: Token;
-  dstToken?: Token;
   walletAddress?: string;
-  slippage?: number;
   srcAmount?: string;
+  srcAmountUI?: string;
+  tradeType?: tradeType;
+  fromToken?: any;
+  toToken?: any;
+  fromTokenUsd?: string | number;
+  dstTokenUsdValue?: string | number;
   dexAmountOut?: string;
-  dstTokenUsdValue?: string;
-  quoteOutAmount?: string;
+  dexAmountOutUI?: string;
+  slippage?: number;
+  partner: partner;
+  tradeOutAmount?: string
 };
 
 export type UseLiquidityHubArgs = {
@@ -220,7 +227,3 @@ export type UseLiquidityHubArgs = {
   dexAmountOutUI?: string;
   slippage?: number;
 };
-
-export interface OnSwapCallbackArgs extends UseLiquidityHubArgs {
-  dexSwap?: () => void;
-}

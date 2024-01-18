@@ -1,14 +1,14 @@
+import { hasWeb3Instance, web3 } from "@defi.org/web3-candies";
 import BN from "bignumber.js";
-import { useCallback } from "react";
-import { usePartner } from "./lib/hooks";
-import { useLHContext } from "./lib/provider";
+import { amountBN, amountUi } from "./lib";
+import { partners } from "./lib/config";
 
 import {
   AnalyticsData,
   AnalyticsInitTradeArgs,
   QuoteResponse,
-  Token,
 } from "./lib/types";
+import { waitForTxReceipt } from "./lib/utils";
 const ANALYTICS_VERSION = 0.2;
 const BI_ENDPOINT = `https://bi.orbs.network/putes/liquidity-hub-ui-${ANALYTICS_VERSION}`;
 const DEX_PRICE_BETTER_ERROR = "Dex trade is better than Clob trade";
@@ -43,22 +43,14 @@ const initialData = (
   };
 };
 
-// const counter = () => {
-//   const now = Date.now();
-
-//   return () => {
-//     return Date.now() - now;
-//   };
-// };
-
 class Analytics {
   initialTimestamp = Date.now();
   data = {} as Partial<AnalyticsData>;
   firstFailureSessionId = "";
   abortController = new AbortController();
 
-  private async  updateAndSend(values = {} as Partial<AnalyticsData>) {
-    if(!this.data.chainId || !this.data.partner) return 
+  public async updateAndSend(values = {} as Partial<AnalyticsData>) {
+    if (!this.data.chainId || !this.data.partner) return;
     try {
       this.abortController.abort();
       this.abortController = new AbortController();
@@ -80,19 +72,25 @@ class Analytics {
     this.data = initialData(partner, chainId);
   }
 
-  onInitSwap({
-    dexAmountOut,
-    srcToken,
-    dstToken,
-    srcAmount,
-    slippage,
-    walletAddress,
-    dstTokenUsdValue,
-  }: AnalyticsInitTradeArgs) {
-    const dstAmountOutUsd = new BN(dexAmountOut || "0")
-      .multipliedBy(dstTokenUsdValue || 0)
-      .dividedBy(new BN(10).pow(new BN(dstToken?.decimals || 0)))
-      .toNumber();
+  onInitSwap(args: AnalyticsInitTradeArgs) {
+    const partner = partners[args.partner];
+    const srcToken = partner.normalizeToken(args.fromToken);
+    const dstToken = partner.normalizeToken(args.toToken);
+    const dstTokenUsdValue = new BN(args.dstTokenUsdValue || "0");
+    const dexAmountOut = args.dexAmountOut
+      ? args.dexAmountOut
+      : amountBN(dstToken, args.dexAmountOutUI || "0").toString();
+
+    const outAmount = args.tradeOutAmount ? args.tradeOutAmount : dexAmountOut;
+    let dstAmountOutUsd = 0;
+    try {
+      dstAmountOutUsd = new BN(outAmount || "0")
+        .multipliedBy(dstTokenUsdValue || 0)
+        .dividedBy(new BN(10).pow(new BN(dstToken?.decimals || 0)))
+        .toNumber();
+    } catch (error) {
+      console.log(error);
+    }
 
     this.updateAndSend({
       dexAmountOut,
@@ -101,9 +99,12 @@ class Analytics {
       srcTokenSymbol: srcToken?.symbol,
       dstTokenAddress: dstToken?.address,
       dstTokenSymbol: dstToken?.symbol,
-      srcAmount,
-      slippage,
-      walletAddress,
+      srcAmount: args.srcAmount
+        ? amountUi(srcToken.decimals, new BN(args.srcAmount))
+        : args.srcAmountUI,
+      slippage: args.slippage,
+      walletAddress: args.walletAddress,
+      tradeType: args.tradeType,
     });
   }
 
@@ -177,20 +178,16 @@ class Analytics {
     this.updateAndSend({ dexSwapState: "pending", isDexTrade: true });
   }
 
-  onDexSwapSuccess(response: any) {
+  async onDexSwapSuccess(dexSwapTxHash?: string) {
     this.updateAndSend({
       dexSwapState: "success",
-      dexSwapTxHash: response.hash,
+      dexSwapTxHash,
     });
+    if (!dexSwapTxHash || !hasWeb3Instance()) return;
+    const res = await waitForTxReceipt(web3(), dexSwapTxHash);
 
-    this.pollTransaction({
-      response,
-      onSucess: () => {
-        this.updateAndSend({ onChainDexSwapState: "success" });
-      },
-      onFailed: () => {
-        this.updateAndSend({ onChainDexSwapState: "failed" });
-      },
+    this.updateAndSend({
+      onChainDexSwapState: res?.mined ? "success" : "failed",
     });
   }
   onDexSwapFailed(dexSwapError: string) {
@@ -265,12 +262,15 @@ class Analytics {
     });
   }
 
-  onSwapFailed(error: string, time: number) {
+  onSwapFailed(error: string, time: number, onChainFailure: boolean) {
     this.updateAndSend({
       swapError: error,
       swapState: "failed",
       swapMillis: time,
-      isNotClobTradeReason: "swap failed",
+      isNotClobTradeReason: onChainFailure
+        ? "onchain swap error"
+        : "swap failed",
+      onChainClobSwapState: onChainFailure ? "failed" : "null",
     });
   }
 
@@ -298,42 +298,8 @@ class Analytics {
     };
   }
 
-  async pollTransaction({
-    response,
-    onSucess,
-    onFailed,
-  }: {
-    response: any;
-    onSucess: () => void;
-    onFailed: () => void;
-  }) {
-    try {
-      const receipt = await response.wait();
-      if (receipt.status === 1) {
-        onSucess();
-      } else {
-        throw new Error("Transaction failed");
-      }
-    } catch (error) {
-      onFailed();
-    }
-  }
-
-  async onClobSuccess(response: any) {
-    this.pollTransaction({
-      response,
-      onSucess: () => {
-        this.updateAndSend({ onChainClobSwapState: "success" });
-      },
-      onFailed: () => {
-        {
-          this.updateAndSend({
-            onChainClobSwapState: "failed",
-            isNotClobTradeReason: "onchain swap error",
-          });
-        }
-      },
-    });
+  async onClobOnChainSwapSuccess() {
+    this.updateAndSend({ onChainClobSwapState: "success" });
   }
 
   onNotClobTrade(message: string) {
@@ -348,36 +314,9 @@ class Analytics {
 
 export const analytics = new Analytics();
 
-interface InitSwapHookArgs {
-  fromToken: Token;
-  toToken: Token;
-  dexAmountOut?: string;
-  dstTokenUsdValue?: string | number;
-  srcAmountUI?: string;
-  quoteOutAmount?: string;
-  slippage?: number;
-}
-
-export const useLiquidityHubAnalytics = () => {
-  const { account } = useLHContext();
-  const partner = usePartner();
-  const initSwap = useCallback(
-    (args: InitSwapHookArgs) => {
-      analytics.onInitSwap({
-        walletAddress: account,
-        slippage: args.slippage,
-        dexAmountOut: args.dexAmountOut,
-        srcToken: args.fromToken,
-        dstToken: args.toToken,
-        dstTokenUsdValue: new BN(args.dstTokenUsdValue || "0").toString(),
-        srcAmount: args.srcAmountUI,
-        quoteOutAmount: args.quoteOutAmount,
-      });
-    },
-    [account, partner]
-  );
-
-  return {
-    initSwap,
-  };
-};
+export const onDexSwapSuccess = (txHash?: string) =>
+  analytics.onDexSwapSuccess(txHash);
+export const onInitSwap = (args: AnalyticsInitTradeArgs) =>
+  analytics.onInitSwap(args);
+export const onDexSwapFailed = (msg: string) => analytics.onDexSwapFailed(msg);
+export const onDexSwapRequest = () => analytics.onDexSwapRequest();

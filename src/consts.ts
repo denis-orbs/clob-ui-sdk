@@ -19,3 +19,4 @@ export const WETH: Record<number, string> = {
   56: "0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c",
 };
 
+export const WEBSITE = 'https://www.orbs.com';
