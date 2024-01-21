@@ -2,7 +2,8 @@ import { isNativeAddress, parsebn } from "@defi.org/web3-candies";
 import BN from "bignumber.js";
 import Web3 from "web3";
 import { QUOTE_ERRORS } from "../consts";
-import { Token } from "./types";
+import { partners } from "./config";
+import { partner, Token } from "./types";
 
 export const isNative = (address?: string) => isNativeAddress(address || "");
 export const amountBN = (token: Token, amount: string) =>
@@ -16,7 +17,6 @@ export const amountUi = (decimals?: number, amount?: BN) => {
 function delay(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
-
 export async function waitForTxReceipt(web3: Web3, txHash: string) {
   for (let i = 0; i < 30; ++i) {
     // due to swap being fetch and not web3
@@ -90,4 +90,9 @@ export async function getTransactionDetails(
 
 export const shouldReturnZeroOutAmount = (error: string) => {
   return error === QUOTE_ERRORS.tns;
+};
+
+export const isSupportedChain = (partner?: partner, chainId?: number) => {
+  if (!chainId || !partner) return false;
+  return partners[partner].chains.includes(chainId);
 };

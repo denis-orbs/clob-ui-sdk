@@ -1,7 +1,6 @@
 /* eslint-disable import/no-extraneous-dependencies */
 import React, { createContext, ReactNode, useEffect, useMemo } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { analytics } from "../analytics";
 import { setWeb3Instance } from "@defi.org/web3-candies";
 import Web3 from "web3";
 import { SwapWizard } from "../swap-wizard/SwapWizard";
@@ -9,6 +8,7 @@ import { ThemeProvider } from "styled-components";
 import { darkTheme, lightTheme } from "./theme";
 import { DEFAULT_API_ENDPOINT, DEFAULT_QUOTE_INTERVAL } from "../consts";
 import { partner } from "./types";
+import { Analytics, useAnalytics } from "../analytics";
 const client = new QueryClient();
 
 interface UISettings {
@@ -26,7 +26,11 @@ interface SharedProps {
   quoteInterval?: number;
   disableAnalytics?: boolean;
 }
-const Context = createContext({} as SharedProps);
+
+interface ContextArgs extends SharedProps {
+  analytics?: Analytics;
+}
+const Context = createContext({} as ContextArgs);
 
 interface Props extends SharedProps {
   children: ReactNode;
@@ -42,14 +46,7 @@ export const LiquidityHubProvider = ({
   theme,
   quoteInterval = DEFAULT_QUOTE_INTERVAL,
   apiUrl = DEFAULT_API_ENDPOINT,
-  disableAnalytics,
 }: Props) => {
-  useEffect(() => {
-    if (!disableAnalytics) {
-      analytics.init(partner, chainId);
-    }
-  }, [partner, chainId]);
-
   useEffect(() => {
     if (provider) {
       setWeb3Instance(new Web3(provider));
@@ -59,6 +56,8 @@ export const LiquidityHubProvider = ({
   const _theme = useMemo(() => {
     return theme === "light" ? lightTheme : darkTheme;
   }, [theme]);
+
+  const analytics = useAnalytics(partner, chainId);
 
   return (
     <QueryClientProvider client={client}>
@@ -72,6 +71,7 @@ export const LiquidityHubProvider = ({
           theme,
           quoteInterval,
           apiUrl,
+          analytics,
         }}
       >
         <ThemeProvider theme={_theme}>

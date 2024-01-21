@@ -1,11 +1,13 @@
 import { hasWeb3Instance, web3 } from "@defi.org/web3-candies";
 import BN from "bignumber.js";
+import { useEffect, useRef } from "react";
 import { amountBN, amountUi } from "./lib";
 import { partners } from "./lib/config";
 
 import {
   AnalyticsData,
   AnalyticsInitTradeArgs,
+  partner,
   QuoteResponse,
 } from "./lib/types";
 import { waitForTxReceipt } from "./lib/utils";
@@ -43,11 +45,15 @@ const initialData = (
   };
 };
 
-class Analytics {
+export class Analytics {
   initialTimestamp = Date.now();
   data = {} as Partial<AnalyticsData>;
   firstFailureSessionId = "";
   abortController = new AbortController();
+
+  constructor(partner: partner, chainId: number) {
+    this.data = initialData(partner, chainId);
+  }
 
   public async updateAndSend(values = {} as Partial<AnalyticsData>) {
     if (!this.data.chainId || !this.data.partner) return;
@@ -68,12 +74,12 @@ class Analytics {
       console.log("Analytics error", error);
     }
   }
-  init(partner?: string, chainId?: number) {
-    this.data = initialData(partner, chainId);
-  }
 
   onInitSwap(args: AnalyticsInitTradeArgs) {
-    const partner = partners[args.partner];
+    if(!this.data.partner || !this.data.chainId) return 
+    console.log('init swap');
+    
+    const partner = partners[this.data.partner];
     const srcToken = partner.normalizeToken(args.fromToken);
     const dstToken = partner.normalizeToken(args.toToken);
     const dstTokenUsdValue = new BN(args.dstTokenUsdValue || "0");
@@ -94,6 +100,7 @@ class Analytics {
 
     this.updateAndSend({
       dexAmountOut,
+      dexAmountOutUI: amountUi(dstToken.decimals, new BN(dexAmountOut)),
       dstAmountOutUsd,
       srcTokenAddress: srcToken?.address,
       srcTokenSymbol: srcToken?.symbol,
@@ -312,11 +319,22 @@ class Analytics {
   }
 }
 
-export const analytics = new Analytics();
+// export const analytics = new Analytics();
 
-export const onDexSwapSuccess = (txHash?: string) =>
-  analytics.onDexSwapSuccess(txHash);
-export const onInitSwap = (args: AnalyticsInitTradeArgs) =>
-  analytics.onInitSwap(args);
-export const onDexSwapFailed = (msg: string) => analytics.onDexSwapFailed(msg);
-export const onDexSwapRequest = () => analytics.onDexSwapRequest();
+// export const onDexSwapSuccess = (txHash?: string) =>
+//   analytics.onDexSwapSuccess(txHash);
+// export const onInitSwap = (args: AnalyticsInitTradeArgs) =>
+//   analytics.onInitSwap(args);
+// export const onDexSwapFailed = (msg: string) => analytics.onDexSwapFailed(msg);
+// export const onDexSwapRequest = () => analytics.onDexSwapRequest();
+
+export const useAnalytics = (partner?: partner, chainId?: number) => {
+  const ref = useRef<Analytics | undefined>();
+  useEffect(() => {
+    if (partner && chainId) {
+      ref.current = new Analytics(partner, chainId);
+    }
+  }, [partner, chainId]);
+
+  return ref.current;
+};

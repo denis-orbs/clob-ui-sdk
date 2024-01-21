@@ -10,7 +10,7 @@ import { useSwapState } from "../store";
 import { partners } from "./config";
 import { useAllowanceQuery } from "./swap-logic";
 import { DappToken, Step, STEPS, Token } from "./types";
-import { isNative, amountUi, amountBN } from "./utils";
+import { isNative, amountUi, amountBN, isSupportedChain } from "./utils";
 import { useLHContext } from "./provider";
 export const useSwapSteps = (): { [key: string]: Step } | undefined => {
   const { fromToken, stepStatuses, fromAmount } = useSwapState((store) => ({
@@ -23,9 +23,7 @@ export const useSwapSteps = (): { [key: string]: Step } | undefined => {
     fromToken,
     fromAmount
   );
-
-  console.log({ approved });
-
+  
   return useMemo(() => {
     if (aprovedLoading) {
       return undefined;
@@ -91,6 +89,11 @@ export const usePartner = () => {
   return useMemo(() => {
     return partners[partner];
   }, [partner]);
+};
+
+export const useIsSupportedChain = () => {
+  const { chainId, partner } = useLHContext();
+  return useMemo(() => isSupportedChain(partner, chainId), [partner, chainId]);
 };
 
 export function useDebounce<T>(value: T, delay?: number): T {
@@ -209,13 +212,17 @@ export const useModifyAmounts = (
   const _fromAmount = useMemo(() => {
     if (!fromAmount && !fromAmountUI) return undefined;
     if (fromAmount) return fromAmount;
-    return fromToken ?  amountBN(fromToken, fromAmountUI || "0").toString() : undefined;
+    return fromToken
+      ? amountBN(fromToken, fromAmountUI || "0").toString()
+      : undefined;
   }, [fromAmount, fromAmountUI, fromToken]);
 
   const _dexAmountOut = useMemo(() => {
     if (!dexAmountOut && !dexAmountOutUI) return undefined;
     if (dexAmountOut) return dexAmountOut;
-      return toToken ?  amountBN(toToken, dexAmountOutUI || "0").toString() : undefined;
+    return toToken
+      ? amountBN(toToken, dexAmountOutUI || "0").toString()
+      : undefined;
   }, [dexAmountOut, dexAmountOutUI, toToken]);
 
   return {

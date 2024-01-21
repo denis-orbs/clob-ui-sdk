@@ -27,10 +27,12 @@ export const partners: { [key: string]: Partner } = {
     name: "QuickSwap",
     explorerUrl: `https://polygonscan.com`,
     normalizeToken: quickswapTokenNormalize,
+    chains: [137]
   },
   thena: {
     name: "Thena",
     explorerUrl: `https://bscscan.com`,
     normalizeToken: thenaTokenNormalize,
+    chains: [56]
   },
 };

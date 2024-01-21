@@ -51,13 +51,14 @@ type analyticsActionState = "pending" | "success" | "failed" | "null" | "";
 
 export interface AnalyticsData {
   _id: string;
-  partner: string;
-  chainId: number;
+  partner?: string;
+  chainId?: number;
   isForceClob: boolean;
   firstFailureSessionId?: string;
   sessionId?: string;
   walletAddress: string;
   dexAmountOut: string;
+  dexAmountOutUI: string;
   isClobTrade: boolean;
   srcTokenAddress: string;
   srcTokenSymbol: string;
@@ -166,6 +167,7 @@ export type Partner = {
   name: string;
   explorerUrl: string;
   normalizeToken: (token: any) => Token;
+  chains: number[];
 };
 
 export type QuickSwapToken = {
@@ -212,8 +214,7 @@ export type AnalyticsInitTradeArgs = {
   dexAmountOut?: string;
   dexAmountOutUI?: string;
   slippage?: number;
-  partner: partner;
-  tradeOutAmount?: string
+  tradeOutAmount?: string;
 };
 
 export type UseLiquidityHubArgs = {
