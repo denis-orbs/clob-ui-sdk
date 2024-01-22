@@ -1,9 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import SwapImg from "../assets/swap.png";
-import Web3 from "web3";
-
 import { useNumericFormat } from "react-number-format";
-
 import BN from "bignumber.js";
 import { WETH } from "../consts";
 import { useSwapState } from "../store";
@@ -64,15 +61,6 @@ export const useSwapSteps = (): { [key: string]: Step } | undefined => {
   }, [fromToken, stepStatuses, approved, aprovedLoading]);
 };
 
-export const useWeb3 = () => {
-  const { provider } = useLHContext();
-  return useMemo(() => {
-    if (!provider) {
-      return;
-    }
-    return new Web3(provider);
-  }, [provider]);
-};
 
 export const useWETHAddress = () => {
   const { chainId } = useLHContext();

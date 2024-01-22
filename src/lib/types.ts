@@ -47,68 +47,13 @@ export interface SubmitTxArgs {
   quote: QuoteResponse;
 }
 
-type analyticsActionState = "pending" | "success" | "failed" | "null" | "";
-
-export interface AnalyticsData {
-  _id: string;
-  partner?: string;
-  chainId?: number;
-  isForceClob: boolean;
-  firstFailureSessionId?: string;
-  sessionId?: string;
-  walletAddress: string;
-  dexAmountOut: string;
-  dexAmountOutUI: string;
-  isClobTrade: boolean;
-  srcTokenAddress: string;
-  srcTokenSymbol: string;
-  dstTokenAddress: string;
-  dstTokenSymbol: string;
-  srcAmount: string;
-  quoteIndex: number;
-  slippage: number;
-  quoteState: analyticsActionState;
-  clobDexPriceDiffPercent: string;
-
-  approvalState: analyticsActionState;
-  approvalError: string;
-  approvalMillis: number | null;
-
-  signatureState: analyticsActionState;
-  signatureMillis: number | null;
-  signature: string;
-  signatureError: string;
-
-  swapState: analyticsActionState;
-  txHash: string;
-  swapMillis: number | null;
-  swapError: string;
-
-  wrapState: analyticsActionState;
-  wrapMillis: number | null;
-  wrapError: string;
-  wrapTxHash: string;
-
-  dexSwapState: analyticsActionState;
-  dexSwapError: string;
-  dexSwapTxHash: string;
-
-  userWasApprovedBeforeTheTrade?: boolean | string;
-  dstAmountOutUsd: number;
-  isProMode: boolean;
-  expertMode: boolean;
-  tradeType?: string;
-  isNotClobTradeReason: string;
-  onChainClobSwapState: analyticsActionState;
-  version: number;
-  isDexTrade: boolean;
-  onChainDexSwapState: analyticsActionState;
-
-  quoteAmountOut?: string;
-  quoteSerializedOrder?: string;
-  quoteMillis?: number;
-  quoteError?: string;
+export interface SubmitSwapArgs {
+  fromToken?: Token;
+  toToken?: Token;
+  fromAmount?: string;
+  quote?: QuoteResponse;
 }
+
 export enum SwapControl {
   FORCE = "1",
   SKIP = "2",
@@ -200,22 +145,7 @@ export type ThenaToken = {
 
 export type DappToken = ThenaToken | QuickSwapToken;
 
-type tradeType = "LIMIT" | "TWAP" | "V2" | "V3" | "BEST_TRADE";
 
-export type AnalyticsInitTradeArgs = {
-  walletAddress?: string;
-  srcAmount?: string;
-  srcAmountUI?: string;
-  tradeType?: tradeType;
-  fromToken?: any;
-  toToken?: any;
-  fromTokenUsd?: string | number;
-  dstTokenUsdValue?: string | number;
-  dexAmountOut?: string;
-  dexAmountOutUI?: string;
-  slippage?: number;
-  tradeOutAmount?: string;
-};
 
 export type UseLiquidityHubArgs = {
   fromToken?: any;

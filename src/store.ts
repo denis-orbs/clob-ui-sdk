@@ -23,7 +23,7 @@ interface SwapStateValues {
   stepStatuses?: { [key: string]: ActionStatus };
   swapStatus: ActionStatus;
   swapError?: string;
-  onSwapSuccessCallback?: () => void;
+  onSwapSuccessDexCallback?: () => void;
 }
 
 interface SwapState extends SwapStateValues {
@@ -54,7 +54,7 @@ const initialSwapState: SwapStateValues = {
   stepStatuses: undefined,
   swapStatus: undefined,
   swapError: undefined,
-  onSwapSuccessCallback: undefined,
+  onSwapSuccessDexCallback: undefined,
 };
 
 export const useSwapState = create<SwapState>((set, get) => ({
@@ -73,7 +73,6 @@ export const useSwapState = create<SwapState>((set, get) => ({
 
   updateState: (state) => set({ ...state }),
   onSwapSuccess: () => {
-    get().onSwapSuccessCallback?.();
     set({
       isFailed: false,
       failures: 0,

@@ -8,7 +8,7 @@ import { ThemeProvider } from "styled-components";
 import { darkTheme, lightTheme } from "./theme";
 import { DEFAULT_API_ENDPOINT, DEFAULT_QUOTE_INTERVAL } from "../consts";
 import { partner } from "./types";
-import { Analytics, useAnalytics } from "../analytics";
+import { analytics } from "./swap-logic";
 const client = new QueryClient();
 
 interface UISettings {
@@ -28,8 +28,9 @@ interface SharedProps {
 }
 
 interface ContextArgs extends SharedProps {
-  analytics?: Analytics;
+  web3?: Web3;
 }
+
 const Context = createContext({} as ContextArgs);
 
 interface Props extends SharedProps {
@@ -57,7 +58,17 @@ export const LiquidityHubProvider = ({
     return theme === "light" ? lightTheme : darkTheme;
   }, [theme]);
 
-  const analytics = useAnalytics(partner, chainId);
+  useEffect(() => {
+    if (chainId && partner) {
+      analytics.setChainId(chainId);
+      analytics.setPartner(partner);
+    }
+  }, [chainId, partner]);
+
+  const web3 = useMemo(
+    () => (provider ? new Web3(provider) : undefined),
+    [provider]
+  );
 
   return (
     <QueryClientProvider client={client}>
@@ -71,7 +82,7 @@ export const LiquidityHubProvider = ({
           theme,
           quoteInterval,
           apiUrl,
-          analytics,
+          web3,
         }}
       >
         <ThemeProvider theme={_theme}>

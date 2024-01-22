@@ -43,16 +43,23 @@ const SubmitButton = () => {
 };
 
 const useSubmitButton = () => {
-  const { fromToken, fromAmount } = useSwapState((store) => ({
-    fromToken: store.fromToken,
-    fromAmount: store.fromAmount,
-  }));
+  const { fromToken, fromAmount, quote, toToken, onSwapSuccessDexCallback } =
+    useSwapState((store) => ({
+      fromToken: store.fromToken,
+      fromAmount: store.fromAmount,
+      toToken: store.toToken,
+      quote: store.quote,
+      onSwapSuccessDexCallback: store.onSwapSuccessDexCallback,
+    }));
   const isPending = useSwapState((store) => store.swapStatus) === "loading";
   const { data: approved } = useAllowanceQuery(fromToken, fromAmount);
 
-  const swap = useSwap();
-
-  console.log("button");
+  const swap = useSwap({
+    fromToken,
+    fromAmount,
+    toToken,
+    quote,
+  });
 
   return useMemo(() => {
     const getText = () => {
@@ -63,10 +70,10 @@ const useSubmitButton = () => {
 
     return {
       text: getText(),
-      onClick: swap,
+      onClick: () => swap(onSwapSuccessDexCallback),
       isPending,
     };
-  }, [approved, fromToken, isPending, swap]);
+  }, [approved, fromToken, isPending, swap, onSwapSuccessDexCallback]);
 };
 
 const Container = styled(FlexColumn)`
