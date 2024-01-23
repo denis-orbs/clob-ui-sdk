@@ -82,10 +82,10 @@ export enum LH_CONTROL {
 }
 
 export enum STEPS {
-  WRAP = "wrap",
-  APPROVE = "approve",
-  SEND_TX = "swap",
-  SIGN = "sign",
+  WRAP,
+  APPROVE,
+  SIGN,
+  SEND_TX,
 }
 
 export type ActionStatus = "loading" | "success" | "failed" | undefined;
@@ -96,6 +96,7 @@ export interface Step {
   link?: { href: string; text: string };
   image?: string;
   hidden?: boolean;
+  id: STEPS;
 }
 
 export type partner = "quickswap" | "thena";

@@ -5,8 +5,6 @@ import { FlexColumn } from "../styles";
 import { Button, PoweredByOrbs } from "../components";
 import { useSwapState } from "../store";
 import { useMemo } from "react";
-
-import { STEPS } from "../lib/types";
 import { useSwapSteps } from "../lib/hooks";
 import { useAllowanceQuery, useSwap } from "../lib/swap-logic";
 import { isNative } from "../lib/utils";
@@ -20,11 +18,8 @@ export const SwapMain = () => {
         <>
           <StyledSteps $gap={15} style={{ width: "100%" }}>
             <Divider />
-            {Object.keys(steps)?.map((key, index) => {
-              const step = steps[key];
-              return (
-                <StepComponent key={index} type={key as STEPS} step={step} />
-              );
+            {steps?.map((step) => {
+              return <StepComponent key={step.id} step={step} />;
             })}
           </StyledSteps>
           <SubmitButton />

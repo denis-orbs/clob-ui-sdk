@@ -9,10 +9,9 @@ import { useAllowanceQuery } from "./swap-logic";
 import { DappToken, Step, STEPS, Token } from "./types";
 import { isNative, amountUi, amountBN, isSupportedChain } from "./utils";
 import { useLHContext } from "./provider";
-export const useSwapSteps = (): { [key: string]: Step } | undefined => {
-  const { fromToken, stepStatuses, fromAmount } = useSwapState((store) => ({
+export const useSwapSteps = (): Step[] | undefined => {
+  const { fromToken, fromAmount } = useSwapState((store) => ({
     fromToken: store.fromToken,
-    stepStatuses: store.stepStatuses,
     fromAmount: store.fromAmount,
   }));
 
@@ -20,47 +19,56 @@ export const useSwapSteps = (): { [key: string]: Step } | undefined => {
     fromToken,
     fromAmount
   );
-  
+
   return useMemo(() => {
     if (aprovedLoading) {
       return undefined;
     }
     const shouldWrap = isNative(fromToken?.address);
-    const steps = {
-      ...(shouldWrap && {
-        [STEPS.WRAP]: {
-          loadingTitle: "Wrap pending...",
-          title: `Wrap ${fromToken?.symbol}`,
-          image: SwapImg,
-        },
-      }),
-      ...(!approved && {
-        [STEPS.APPROVE]: {
-          loadingTitle: "Approval pending...",
-          title: `Approve ${fromToken?.symbol} spending`,
-          image: fromToken?.logoUrl,
-        },
-      }),
-      [STEPS.SIGN]: {
-        loadingTitle: "Sign pending...",
-        title: "Sign message in wallet",
-        image: SwapImg,
-        link: {
-          href: "https://etherscan.io/",
-          text: "Why are signatures required?",
-        },
-      },
-      [STEPS.SEND_TX]: {
-        loadingTitle: "Swap pending...",
-        title: "Confirm swap",
-        image: SwapImg,
+    const wrap: Step = {
+      loadingTitle: "Wrap pending...",
+      title: `Wrap ${fromToken?.symbol}`,
+      image: SwapImg,
+      id: STEPS.WRAP,
+    };
+
+    const approve: Step = {
+      loadingTitle: "Approval pending...",
+      title: `Approve ${fromToken?.symbol} spending`,
+      image: fromToken?.logoUrl,
+      id: STEPS.APPROVE,
+    };
+
+    const sign: Step = {
+      loadingTitle: "Sign pending...",
+      title: "Sign message in wallet",
+      image: SwapImg,
+      id: STEPS.SIGN,
+      link: {
+        href: "https://etherscan.io/",
+        text: "Why are signatures required?",
       },
     };
 
-    return steps;
-  }, [fromToken, stepStatuses, approved, aprovedLoading]);
-};
+    const sendTx: Step = {
+      id: STEPS.SEND_TX,
+      loadingTitle: "Swap pending...",
+      title: "Confirm swap",
+      image: SwapImg,
+    };
 
+    const steps = [sign, sendTx];
+
+    if (!approved) {
+      steps.unshift(approve);
+    }
+
+    if (shouldWrap) {
+      steps.unshift(wrap);
+    }
+    return steps;
+  }, [fromToken, approved, aprovedLoading]);
+};
 
 export const useWETHAddress = () => {
   const { chainId } = useLHContext();
@@ -216,5 +224,23 @@ export const useModifyAmounts = (
   return {
     fromAmount: _fromAmount,
     dexAmountOut: _dexAmountOut,
+  };
+};
+
+export const useSwapStateExternal = () => {
+  const { currentStep, txHash, error, status } = useSwapState((s) => ({
+    currentStep: s.currentStep,
+    txHash: s.txHash,
+    error: s.swapError,
+    status: s.swapStatus,
+  }));
+
+  return {
+    currentStep,
+    txHash,
+    error,
+    status,
+    swapSuccess: currentStep === STEPS.SEND_TX && status === "success",
+    swapFailed: !!error,
   };
 };

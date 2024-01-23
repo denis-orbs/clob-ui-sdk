@@ -15,7 +15,6 @@ import BN from "bignumber.js";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Web3 from "web3";
 import {
-  STEPS,
   SubmitTxArgs,
   QuoteQueryArgs,
   QuoteResponse,
@@ -23,6 +22,7 @@ import {
   UseLiquidityHubArgs,
   LH_CONTROL,
   SubmitSwapArgs,
+  STEPS,
 } from "./types";
 import { QUERY_KEYS, QUOTE_ERRORS } from "../consts";
 import { useLHContext } from "./provider";
@@ -49,7 +49,7 @@ export const analytics = new Analytics();
 const useApprove = (fromTokenAddress?: string) => {
   const { account } = useLHContext();
   const getFromTokenContract = useFromTokenContractCallback();
-  const { updateStepStatus } = useSwapState();
+  const { updateState } = useSwapState();
   return useCallback(
     async (srcAmount: string) => {
       const count = counter();
@@ -57,7 +57,7 @@ const useApprove = (fromTokenAddress?: string) => {
       if (!account) {
         throw new Error("No account");
       }
-      updateStepStatus(STEPS.APPROVE, "loading");
+      updateState({ swapStatus: "loading", currentStep: STEPS.APPROVE });
       try {
         if (!fromTokenAddress || !srcAmount) {
           throw new Error("Missing data");
@@ -74,26 +74,26 @@ const useApprove = (fromTokenAddress?: string) => {
 
         await sendAndWaitForConfirmations(tx, { from: account });
         analytics.onApprovalSuccess(count());
-        updateStepStatus(STEPS.APPROVE, "success");
+        updateState({ swapStatus: "success" });
       } catch (error: any) {
         analytics.onApprovalFailed(error.message, count());
         throw new Error(error.message);
       } finally {
       }
     },
-    [account, updateStepStatus, fromTokenAddress, getFromTokenContract]
+    [account, updateState, fromTokenAddress, getFromTokenContract]
   );
 };
 
 const useSign = () => {
   const { account, provider } = useLHContext();
-  const { updateStepStatus } = useSwapState();
+  const { updateState } = useSwapState();
 
   return useCallback(
     async (permitData: any) => {
       const count = counter();
       analytics.onSignatureRequest();
-      updateStepStatus(STEPS.SIGN, "loading");
+      updateState({ swapStatus: "loading", currentStep: STEPS.SIGN });
       try {
         if (!account || !provider) {
           throw new Error("No account or library");
@@ -102,14 +102,14 @@ const useSign = () => {
         setWeb3Instance(new Web3(provider));
         const signature = await signEIP712(account, permitData);
         analytics.onSignatureSuccess(signature, count());
-        updateStepStatus(STEPS.SIGN, "success");
+        updateState({ swapStatus: "success" });
         return signature;
       } catch (error: any) {
         analytics.onSignatureFailed(error.message, count());
         throw new Error(error.message);
       }
     },
-    [updateStepStatus, account, provider]
+    [updateState, account, provider]
   );
 };
 
@@ -153,11 +153,12 @@ const useApproved = (fromToken?: Token) => {
 
 const useSubmitSwap = () => {
   const { provider, account, chainId, apiUrl } = useLHContext();
-  const { updateStepStatus } = useSwapState();
+  const { updateState } = useSwapState();
   return useCallback(
     async (args: SubmitTxArgs) => {
       let txDetails;
-      updateStepStatus(STEPS.SEND_TX, "loading");
+      updateState({ swapStatus: "loading", currentStep: STEPS.SEND_TX });
+
       const count = counter();
       analytics.onSwapRequest();
 
@@ -191,23 +192,19 @@ const useSubmitSwap = () => {
         analytics.onSwapSuccess(swap.txHash, count());
         txDetails = await waitForTxReceipt(new Web3(provider), swap.txHash);
         if (txDetails?.mined) {
-          updateStepStatus(STEPS.SEND_TX, "success", {
-            txHash: swap.txHash,
-          });
+          updateState({ swapStatus: "success", txHash: swap.txHash });
+
           analytics.onClobOnChainSwapSuccess();
         } else {
           throw new Error(txDetails?.revertMessage);
         }
       } catch (error: any) {
-        analytics.onSwapFailed(
-          error.message,
-          count(),
-          !!txDetails?.revertMessage
-        );
-        throw new Error(error.message);
+        const msg = error.message.error || error.message;
+        analytics.onSwapFailed(msg, count(), !!txDetails?.revertMessage);
+        throw new Error(msg);
       }
     },
-    [provider, account, chainId, updateStepStatus]
+    [provider, account, chainId, updateState]
   );
 };
 
@@ -307,7 +304,7 @@ export const useSwap = ({
 
 const useWrap = (fromToken?: Token) => {
   const { account } = useLHContext();
-  const { updateStepStatus } = useSwapState();
+  const { updateState } = useSwapState();
   const getFromTokenContract = useFromTokenContractCallback();
 
   return useCallback(
@@ -325,7 +322,7 @@ const useWrap = (fromToken?: Token) => {
       if (!fromTokenContract) {
         throw new Error("Missing from token contract");
       }
-      updateStepStatus(STEPS.WRAP, "loading");
+      updateState({ swapStatus: "loading", currentStep: STEPS.WRAP });
       try {
         if (!fromToken || !srcAmount) return;
         const tx = fromTokenContract?.methods?.deposit();
@@ -336,14 +333,15 @@ const useWrap = (fromToken?: Token) => {
 
         // setFromAddress(WBNB_ADDRESS);
         analytics.onWrapSuccess(count());
-        updateStepStatus(STEPS.WRAP, "success");
+        updateState({ swapStatus: "success" });
+
         return true;
       } catch (error: any) {
         analytics.onWrapFailed(error.message, count());
         throw new Error(error.message);
       }
     },
-    [account, updateStepStatus, getFromTokenContract]
+    [account, updateState, getFromTokenContract]
   );
 };
 

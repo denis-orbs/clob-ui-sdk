@@ -4,22 +4,31 @@ import { Spinner } from "../components";
 import { useSwapState } from "../store";
 import { FlexColumn, FlexRow, Link } from "../styles";
 import { Check, X } from "react-feather";
-import { Step, STEPS, ActionStatus } from "../lib/types";
+import { Step, ActionStatus } from "../lib/types";
 
 interface Props {
   step: Step;
-  type: STEPS;
 }
 
-export function StepComponent({ step, type }: Props) {
-  const { currentStep, stepStatuses } = useSwapState((store) => ({
+export function StepComponent({ step }: Props) {
+  const { currentStep, swapStatus } = useSwapState((store) => ({
     currentStep: store.currentStep,
-    stepStatuses: store.stepStatuses,
+    swapStatus: store.swapStatus,
   }));
 
 
-  const status = stepStatuses?.[type];
-  const selected = type === currentStep;
+  const status = useMemo((): ActionStatus => {
+    if (!currentStep) return;
+    if (step.id < currentStep) {
+      return "success";
+    }
+    if (step.id > currentStep) {
+      return undefined
+    }
+    return swapStatus; 
+  }, [swapStatus, currentStep, step.id]);
+
+  const selected = step.id === currentStep;
   return (
     <StyledStep>
       <StyledStepLogo $selected={selected}>

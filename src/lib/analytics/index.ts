@@ -67,8 +67,7 @@ const initSwap = (args: InitTrade, partner?: string) => {
       : args.srcAmountUI,
     slippage: args.slippage,
     walletAddress: args.walletAddress,
-    tradeType: args.tradeType,
-    chainId: args.chainId,
+    tradeType: args.tradeType
   };
 };
 
@@ -87,11 +86,13 @@ export class Analytics {
   }
 
   public async updateAndSend(values = {} as Partial<AnalyticsData>) {
+    console.log(values, this.data);
+    
     const chainId = values.chainId || this.data.chainId;
     const partner = values.partner || this.data.partner;
     if (!chainId || !partner) {
-      console.error('Missng chain or partner')
-      return 
+      console.error("Missng chain or partner");
+      return;
     }
     try {
       this.abortController.abort();
@@ -117,43 +118,50 @@ export class Analytics {
     this.updateAndSend(result);
   }
 
-  onQuoteRequest(dexAmountOut?: string) {
-    this.updateAndSend({
+  onQuoteRequest() {
+    this.data = {
+      ...this.data,
       quoteState: "pending",
       quoteIndex: !this.data.quoteIndex ? 1 : this.data.quoteIndex + 1,
-      dexAmountOut,
-    });
+    };
   }
 
-  onQuoteSuccess(time: number, quoteResponse: QuoteResponse) {
-    this.updateAndSend({
+  onQuoteSuccess(quoteMillis: number, quoteResponse: QuoteResponse) {
+    this.data = {
+      ...this.data,
       quoteState: "success",
-      ...this.handleQuoteData(quoteResponse, time),
-    });
+      quoteMillis,
+      ...this.handleQuoteData(quoteResponse),
+    };
   }
 
-  onQuoteFailed(error: string, time: number, quoteResponse?: QuoteResponse) {
+  onQuoteFailed(
+    error: string,
+    quoteMillis: number,
+    quoteResponse?: QuoteResponse
+  ) {
     // we not treat DEX_PRICE_BETTER_ERROR as a failure
     if (error == DEX_PRICE_BETTER_ERROR) {
-      this.updateAndSend({
+      this.data = {
+        ...this.data,
         isNotClobTradeReason: DEX_PRICE_BETTER_ERROR,
         quoteState: "success",
-        ...this.handleQuoteData(quoteResponse, time),
-      });
+        quoteMillis,
+        ...this.handleQuoteData(quoteResponse),
+      };
     } else {
-      this.updateAndSend({
+      this.data = {
+        ...this.data,
         quoteError: error,
         quoteState: "failed",
         isNotClobTradeReason: `quote-failed`,
-        ...this.handleQuoteData(quoteResponse, time),
-      });
+        quoteMillis,
+        ...this.handleQuoteData(quoteResponse),
+      };
     }
   }
 
-  handleQuoteData(
-    quoteResponse?: QuoteResponse,
-    time?: number
-  ): Partial<AnalyticsData> {
+  handleQuoteData(quoteResponse?: QuoteResponse): Partial<AnalyticsData> {
     const getDiff = () => {
       if (!quoteResponse?.outAmount || !this.data.dexAmountOut) {
         return "";
@@ -168,7 +176,6 @@ export class Analytics {
     return {
       quoteAmountOut: quoteResponse?.outAmount,
       quoteSerializedOrder: quoteResponse?.serializedOrder,
-      quoteMillis: time,
       clobDexPriceDiffPercent: getDiff(),
     };
   }
@@ -315,7 +322,7 @@ function onDexSwapFailed(dexSwapError: string) {
 
 const initDexSwap = (args: InitDexTrade) => {
   const result = initSwap(args, args.partner);
-  _analytics.updateAndSend({ ...result, partner: args.partner });
+  _analytics.updateAndSend({ ...result, partner: args.partner, chainId: args.chainId });
 };
 
 // for dex
