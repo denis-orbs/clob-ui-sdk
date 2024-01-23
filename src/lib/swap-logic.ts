@@ -36,6 +36,7 @@ import {
   useWETHAddress,
 } from "./hooks";
 import {
+  addSlippage,
   amountUi,
   counter,
   shouldReturnZeroOutAmount,
@@ -459,12 +460,23 @@ export const useQuote = ({
           throw new Error(QUOTE_ERRORS.noLiquidity);
         }
         analytics.onQuoteSuccess(count(), result);
+
+        const outAmountUI = numericFormatter(
+          amountUi(toToken?.decimals, new BN(result.outAmount)),
+          { decimalScale: 4, thousandSeparator: "," }
+        );
+
+        const outAmountUIWithSlippage = numericFormatter(
+          amountUi(
+            toToken?.decimals,
+            new BN(addSlippage(result.outAmount, slippage))
+          ),
+          { decimalScale: 4, thousandSeparator: "," }
+        );
         return {
           ...result,
-          outAmountUI: numericFormatter(
-            amountUi(toToken?.decimals, new BN(result.outAmount)),
-            { decimalScale: 4, thousandSeparator: "," }
-          ),
+          outAmountUI,
+          outAmountUIWithSlippage,
         } as QuoteResponse;
       } catch (error: any) {
         analytics.onQuoteFailed(error.message, count(), result);
@@ -537,17 +549,29 @@ export const useTradeOwner = (
 };
 
 export const useLiquidityHub = (args: UseLiquidityHubArgs) => {
-  const { fromToken, toToken } = useModifyTokens(args.fromToken, args.toToken);
-  const { fromAmount, dexAmountOut } = useModifyAmounts(
+  const { slippage } = args;
+  const fromTokenUsd = args.swapTypeIsBuy ? args.toTokenUsd : args.fromTokenUsd;
+  const toTokenUsd = args.swapTypeIsBuy ? args.fromTokenUsd : args.toTokenUsd;
+  const { fromToken, toToken } = useModifyTokens(
+    args.fromToken,
+    args.toToken,
+    args.swapTypeIsBuy
+  );
+  const { fromAmount, dexAmountOut } = useModifyAmounts({
     fromToken,
     toToken,
-    args.fromAmount,
-    args.fromAmountUI,
-    args.dexAmountOut,
-    args.dexAmountOutUI
-  );
+    fromAmount: args.fromAmount,
+    fromAmountUI: args.fromAmountUI,
+    dexAmountOut: args.dexAmountOut,
+    dexAmountOutUI: args.dexAmountOutUI,
+    deductSlippage: args.deductSlippage,
+    slippage: args.slippage,
+    swapTypeIsBuy: args.swapTypeIsBuy,
+  });  
+
+  console.log({ fromAmount, dexAmountOut });
+  
   useAllowanceQuery(fromToken, fromAmount);
-  const { slippage, fromTokenUsd, toTokenUsd } = args;
   const { swapStatus, swapError, updateState } = useSwapState((store) => ({
     swapStatus: store.swapStatus,
     swapError: store.swapError,
@@ -571,8 +595,8 @@ export const useLiquidityHub = (args: UseLiquidityHubArgs) => {
   const initSwap = useCallback(() => {
     if (!fromToken || !toToken || !fromAmount) return;
     analytics.onInitSwap({
-      fromToken: args.fromToken,
-      toToken: args.toToken,
+      fromToken,
+      toToken,
       dexAmountOut,
       dstTokenUsdValue: toTokenUsd,
       srcAmount: fromAmount,

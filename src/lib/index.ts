@@ -1,5 +1,10 @@
 export { LiquidityHubProvider } from "./provider";
-export { amountBN, amountUi, isSupportedChain } from "./utils";
+export {
+  amountBN,
+  amountUi,
+  isSupportedChain,
+  getThenaLHTokens,
+} from "./utils";
 export * from "../components/PoweredByOrbs";
 export * from "../components/OrbsLogo";
 export { analytics } from "./analytics";

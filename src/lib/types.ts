@@ -54,11 +54,6 @@ export interface SubmitSwapArgs {
   quote?: QuoteResponse;
 }
 
-export enum SwapControl {
-  FORCE = "1",
-  SKIP = "2",
-}
-
 export interface QuoteResponse {
   outAmount: string;
   permitData: any;
@@ -66,6 +61,7 @@ export interface QuoteResponse {
   callData: string;
   rawData: any;
   outAmountUI: string;
+  outAmountUIWithSlippage?: string;
 }
 
 export interface Token {
@@ -158,4 +154,6 @@ export type UseLiquidityHubArgs = {
   dexAmountOut?: string;
   dexAmountOutUI?: string;
   slippage?: number;
+  swapTypeIsBuy?: boolean
+  deductSlippage?: boolean;
 };

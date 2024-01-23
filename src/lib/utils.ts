@@ -1,13 +1,16 @@
-import { isNativeAddress, parsebn } from "@defi.org/web3-candies";
-import BN from "bignumber.js";
+import { isNativeAddress, parsebn, zero } from "@defi.org/web3-candies";
+import BN, { BigNumber } from "bignumber.js";
 import Web3 from "web3";
-import { QUOTE_ERRORS } from "../consts";
+import { QUOTE_ERRORS, THENA_TOKENS_LIST_API } from "../consts";
 import { partners } from "./config";
-import { partner, Token } from "./types";
+import { partner } from "./types";
 
 export const isNative = (address?: string) => isNativeAddress(address || "");
-export const amountBN = (token: Token, amount: string) =>
-  parsebn(amount).times(new BN(10).pow(token?.decimals || 0));
+export const amountBN = (decimals?: number, amount?: string) => {
+  if (!decimals || !amount) return zero;
+
+  return parsebn(amount).times(new BN(10).pow(decimals || 0));
+};
 export const amountUi = (decimals?: number, amount?: BN) => {
   if (!decimals || !amount) return "";
   const percision = new BN(10).pow(decimals || 0);
@@ -96,3 +99,38 @@ export const isSupportedChain = (partner?: partner, chainId?: number) => {
   if (!chainId || !partner) return false;
   return partners[partner].chains.includes(chainId);
 };
+
+export const deductSlippage = (amount?: string, slippage?: number) => {
+  if (!amount) return "";
+  if (!slippage) return amount;
+  console.log(slippage, amount);
+  
+  return new BigNumber(amount)
+    .times(100 - slippage)
+    .div(100)
+    .toString();
+};
+
+
+export const addSlippage = (amount?: string, slippage?: number) => {
+  if (!amount) return "";
+  if (!slippage) return amount;
+  return new BigNumber(amount)
+    .times(100 + slippage)
+    .div(100)
+    .toString();
+};
+
+
+export const getThenaLHTokens = async (liquidityHubEnabled: boolean) => {
+  if (!liquidityHubEnabled) {
+    return [];
+  }
+  try {
+    const data = await fetch(THENA_TOKENS_LIST_API).then((res) => res.json());
+    return data.tokens;
+  } catch (error) {
+    return [];
+  }
+};
+

@@ -7,7 +7,14 @@ import { useSwapState } from "../store";
 import { partners } from "./config";
 import { useAllowanceQuery } from "./swap-logic";
 import { DappToken, Step, STEPS, Token } from "./types";
-import { isNative, amountUi, amountBN, isSupportedChain } from "./utils";
+import {
+  isNative,
+  amountUi,
+  amountBN,
+  isSupportedChain,
+  deductSlippage,
+  addSlippage,
+} from "./utils";
 import { useLHContext } from "./provider";
 export const useSwapSteps = (): Step[] | undefined => {
   const { fromToken, fromAmount } = useSwapState((store) => ({
@@ -180,7 +187,11 @@ export const useToAmountUI = () => {
   });
 };
 
-export const useModifyTokens = (fromToken?: DappToken, toToken?: DappToken) => {
+export const useModifyTokens = (
+  fromToken?: DappToken,
+  toToken?: DappToken,
+  swapTypeIsBuy?: boolean
+) => {
   const partner = usePartner();
 
   return useMemo(() => {
@@ -190,36 +201,68 @@ export const useModifyTokens = (fromToken?: DappToken, toToken?: DappToken) => {
         toToken: undefined,
       };
     }
+
+    const _fromToken = fromToken && partner.normalizeToken(fromToken);
+    const _toToken = toToken && partner.normalizeToken(toToken);
     return {
-      fromToken: fromToken && partner.normalizeToken(fromToken),
-      toToken: toToken && partner.normalizeToken(toToken),
+      fromToken: swapTypeIsBuy ? _toToken : _fromToken,
+      toToken: swapTypeIsBuy ? _fromToken : _toToken,
     };
   }, [partner, fromToken?.address, toToken?.address]);
 };
 
-export const useModifyAmounts = (
-  fromToken?: Token,
-  toToken?: Token,
-  fromAmount?: string,
-  fromAmountUI?: string,
-  dexAmountOut?: string,
-  dexAmountOutUI?: string
-) => {
+export const useModifyAmounts = (args: {
+  fromToken?: Token;
+  toToken?: Token;
+  fromAmount?: string;
+  fromAmountUI?: string;
+  dexAmountOut?: string;
+  dexAmountOutUI?: string;
+  deductSlippage?: boolean;
+  slippage?: number;
+  swapTypeIsBuy?: boolean;
+}) => {
   const _fromAmount = useMemo(() => {
-    if (!fromAmount && !fromAmountUI) return undefined;
-    if (fromAmount) return fromAmount;
-    return fromToken
-      ? amountBN(fromToken, fromAmountUI || "0").toString()
-      : undefined;
-  }, [fromAmount, fromAmountUI, fromToken]);
+    if ((!args.fromAmount && !args.fromAmountUI) || !args.fromToken)
+      return undefined;
+    const value = args.fromAmount
+      ? args.fromAmount
+      : amountBN(args.fromToken.decimals, args.fromAmountUI || "0").toString();
+    if (args.swapTypeIsBuy) {
+      return addSlippage(value, args.slippage);
+    }
+    return value;
+  }, [
+    args.fromAmount,
+    args.fromAmountUI,
+    args.fromToken,
+    args.swapTypeIsBuy,
+    args.slippage,
+  ]);
 
   const _dexAmountOut = useMemo(() => {
-    if (!dexAmountOut && !dexAmountOutUI) return undefined;
-    if (dexAmountOut) return dexAmountOut;
-    return toToken
-      ? amountBN(toToken, dexAmountOutUI || "0").toString()
-      : undefined;
-  }, [dexAmountOut, dexAmountOutUI, toToken]);
+    if ((!args.dexAmountOut && !args.dexAmountOutUI) || !args.toToken) {
+      return undefined;
+    }
+    const value = args.dexAmountOut
+      ? args.dexAmountOut
+      : amountBN(args.toToken.decimals, args.dexAmountOutUI || "0").toString();
+
+    if (args.swapTypeIsBuy) {
+      return value;
+    }
+    if (args.deductSlippage) {
+      return deductSlippage(value, args.slippage);
+    }
+    return value;
+  }, [
+    args.dexAmountOut,
+    args.dexAmountOutUI,
+    args.toToken,
+    args.deductSlippage,
+    args.slippage,
+    args.swapTypeIsBuy,
+  ]);
 
   return {
     fromAmount: _fromAmount,

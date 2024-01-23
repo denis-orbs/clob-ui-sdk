@@ -20,3 +20,5 @@ export const WETH: Record<number, string> = {
 };
 
 export const WEBSITE = 'https://www.orbs.com';
+export const THENA_TOKENS_LIST_API =
+  "https://lhthena.s3.us-east-2.amazonaws.com/token-list-lh.json";

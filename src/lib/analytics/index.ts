@@ -41,7 +41,7 @@ const initSwap = (args: InitTrade, partner?: string) => {
   const dstTokenUsdValue = new BN(args.dstTokenUsdValue || "0");
   const dexAmountOut = args.dexAmountOut
     ? args.dexAmountOut
-    : amountBN(dstToken, args.dexAmountOutUI || "0").toString();
+    : amountBN(dstToken?.decimals, args.dexAmountOutUI || "0").toString();
 
   const outAmount = args.tradeOutAmount ? args.tradeOutAmount : dexAmountOut;
   let dstAmountOutUsd = 0;
