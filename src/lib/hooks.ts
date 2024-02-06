@@ -4,18 +4,17 @@ import { useNumericFormat } from "react-number-format";
 import BN from "bignumber.js";
 import { WETH } from "../consts";
 import { useSwapState } from "../store";
-import { partners } from "./config";
 import { useAllowanceQuery } from "./swap-logic";
-import { DappToken, Step, STEPS, Token } from "./types";
+import { Step, STEPS, Token } from "./types";
 import {
   isNative,
   amountUi,
   amountBN,
-  isSupportedChain,
   deductSlippage,
   addSlippage,
 } from "./utils";
 import { useLHContext } from "./provider";
+import { chains } from "./config";
 export const useSwapSteps = (): Step[] | undefined => {
   const { fromToken, fromAmount } = useSwapState((store) => ({
     fromToken: store.fromToken,
@@ -86,18 +85,6 @@ export const useWETHAddress = () => {
   }, [chainId]);
 };
 
-export const usePartner = () => {
-  const { partner } = useLHContext();
-
-  return useMemo(() => {
-    return partners[partner];
-  }, [partner]);
-};
-
-export const useIsSupportedChain = () => {
-  const { chainId, partner } = useLHContext();
-  return useMemo(() => isSupportedChain(partner, chainId), [partner, chainId]);
-};
 
 export function useDebounce<T>(value: T, delay?: number): T {
   const [debouncedValue, setDebouncedValue] = useState<T>(value);
@@ -187,28 +174,13 @@ export const useToAmountUI = () => {
   });
 };
 
-export const useModifyTokens = (
-  fromToken?: DappToken,
-  toToken?: DappToken,
-  swapTypeIsBuy?: boolean
-) => {
-  const partner = usePartner();
+export const useChainConfig = () => {
+  const chainId = useLHContext().chainId;
 
   return useMemo(() => {
-    if (!partner || !partner.normalizeToken) {
-      return {
-        fromToken: undefined,
-        toToken: undefined,
-      };
-    }
-
-    const _fromToken = fromToken && partner.normalizeToken(fromToken);
-    const _toToken = toToken && partner.normalizeToken(toToken);
-    return {
-      fromToken: swapTypeIsBuy ? _toToken : _fromToken,
-      toToken: swapTypeIsBuy ? _fromToken : _toToken,
-    };
-  }, [partner, fromToken?.address, toToken?.address]);
+    if (!chainId) return;
+    return chains[chainId];
+  }, [chainId]);
 };
 
 export const useModifyAmounts = (args: {
@@ -218,7 +190,7 @@ export const useModifyAmounts = (args: {
   fromAmountUI?: string;
   dexAmountOut?: string;
   dexAmountOutUI?: string;
-  deductSlippage?: boolean;
+  ignoreSlippage?: boolean;
   slippage?: number;
   swapTypeIsBuy?: boolean;
 }) => {
@@ -251,7 +223,7 @@ export const useModifyAmounts = (args: {
     if (args.swapTypeIsBuy) {
       return value;
     }
-    if (args.deductSlippage) {
+    if (!args.ignoreSlippage) {
       return deductSlippage(value, args.slippage);
     }
     return value;
@@ -259,7 +231,7 @@ export const useModifyAmounts = (args: {
     args.dexAmountOut,
     args.dexAmountOutUI,
     args.toToken,
-    args.deductSlippage,
+    args.ignoreSlippage,
     args.slippage,
     args.swapTypeIsBuy,
   ]);

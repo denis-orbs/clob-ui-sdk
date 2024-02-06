@@ -2,8 +2,6 @@ import { isNativeAddress, parsebn, zero } from "@defi.org/web3-candies";
 import BN, { BigNumber } from "bignumber.js";
 import Web3 from "web3";
 import { QUOTE_ERRORS, THENA_TOKENS_LIST_API } from "../consts";
-import { partners } from "./config";
-import { partner } from "./types";
 
 export const isNative = (address?: string) => isNativeAddress(address || "");
 export const amountBN = (decimals?: number, amount?: string) => {
@@ -95,10 +93,6 @@ export const shouldReturnZeroOutAmount = (error: string) => {
   return error === QUOTE_ERRORS.tns;
 };
 
-export const isSupportedChain = (partner?: partner, chainId?: number) => {
-  if (!chainId || !partner) return false;
-  return partners[partner].chains.includes(chainId);
-};
 
 export const deductSlippage = (amount?: string, slippage?: number) => {
   if (!amount) return "";

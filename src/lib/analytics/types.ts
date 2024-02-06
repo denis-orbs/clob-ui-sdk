@@ -1,4 +1,4 @@
-import { partner } from "../types";
+import { Token } from "../types";
 
 type tradeType = "LIMIT" | "TWAP" | "V2" | "V3" | "BEST_TRADE";
 
@@ -7,8 +7,8 @@ export interface InitTrade {
   srcAmount?: string;
   srcAmountUI?: string;
   tradeType?: tradeType;
-  fromToken?: any;
-  toToken?: any;
+  fromToken?: Token;
+  toToken?: Token;
   fromTokenUsd?: string | number;
   dstTokenUsdValue?: string | number;
   dexAmountOut?: string;
@@ -16,12 +16,12 @@ export interface InitTrade {
   slippage?: number;
   tradeOutAmount?: string;
   chainId?: number;
-  partner?: partner;
+  partner?: string;
 }
 
 export interface InitDexTrade extends InitTrade {
   chainId: number;
-  partner: partner;
+  partner: string;
 }
 
 

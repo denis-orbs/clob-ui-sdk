@@ -1,38 +1,11 @@
-import { zeroAddress } from "@defi.org/web3-candies";
-import { Partner, Token } from "./types";
-
-export const quickswapTokenNormalize = (token: any): Token => {
-  return {
-    address: token.address || zeroAddress,
-    symbol: token.symbol,
-    decimals: token.decimals,
-    logoUrl: token.tokenInfo
-      ? token.tokenInfo.logoURI
-      : "https://quickswap.exchange/MATIC.png",
-  };
-};
+import { ChainConfig } from "./types";
 
 
-export const thenaTokenNormalize = (token: any): Token => {
-    return {
-      address: token.address === 'BNB' ? zeroAddress : token.address,
-      symbol: token.symbol,
-      decimals: token.decimals,
-      logoUrl: token.logoURI?.replace("_1", ""),
-    };
-}
-
-export const partners: { [key: string]: Partner } = {
-  quickswap: {
-    name: "QuickSwap",
+export const chains: { [key: string]: ChainConfig } = {
+  137: {
     explorerUrl: `https://polygonscan.com`,
-    normalizeToken: quickswapTokenNormalize,
-    chains: [137]
   },
-  thena: {
-    name: "Thena",
+  56: {
     explorerUrl: `https://bscscan.com`,
-    normalizeToken: thenaTokenNormalize,
-    chains: [56]
   },
 };

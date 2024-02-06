@@ -1,9 +1,8 @@
 import { hasWeb3Instance, web3 } from "@defi.org/web3-candies";
 import BN from "bignumber.js";
 import { amountBN, amountUi } from "..";
-import { partners } from "../config";
 
-import { partner, QuoteResponse } from "../types";
+import { QuoteResponse } from "../types";
 import { waitForTxReceipt } from "../utils";
 import { AnalyticsData, InitDexTrade, InitTrade } from "./types";
 const ANALYTICS_VERSION = 0.2;
@@ -33,11 +32,12 @@ const initialData: Partial<AnalyticsData> = {
   version: ANALYTICS_VERSION,
 };
 
-const initSwap = (args: InitTrade, partner?: string) => {
-  if (!partner) return;
-  const _partner = partners[partner];
-  const srcToken = _partner.normalizeToken(args.fromToken);
-  const dstToken = _partner.normalizeToken(args.toToken);
+const initSwap = (args: InitTrade) => {
+  const srcToken = args.fromToken;
+  const dstToken = args.toToken;
+  if (!srcToken || !dstToken) {
+   return 
+  }
   const dstTokenUsdValue = new BN(args.dstTokenUsdValue || "0");
   const dexAmountOut = args.dexAmountOut
     ? args.dexAmountOut
@@ -77,7 +77,7 @@ export class Analytics {
   firstFailureSessionId = "";
   abortController = new AbortController();
 
-  setPartner(partner: partner) {
+  setPartner(partner: string) {
     this.data.partner = partner;
   }
 
@@ -113,8 +113,8 @@ export class Analytics {
   }
 
   onInitSwap(args: InitTrade) {
-    if (!this.data.partner || !this.data.chainId) return;
-    const result = initSwap(args, this.data.partner);
+    if (!this.data.chainId) return;
+    const result = initSwap(args);
     this.updateAndSend(result);
   }
 
@@ -321,7 +321,7 @@ function onDexSwapFailed(dexSwapError: string) {
 }
 
 const initDexSwap = (args: InitDexTrade) => {
-  const result = initSwap(args, args.partner);
+  const result = initSwap(args);
   _analytics.updateAndSend({ ...result, partner: args.partner, chainId: args.chainId });
 };
 

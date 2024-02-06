@@ -30,9 +30,7 @@ import { useLiquidityHubPersistedStore, useSwapState } from "../store";
 import { isNative } from "lodash";
 import {
   useDebounce,
-  useIsSupportedChain,
   useModifyAmounts,
-  useModifyTokens,
   useWETHAddress,
 } from "./hooks";
 import {
@@ -390,7 +388,6 @@ export const useQuote = ({
     isFailed: s.isFailed,
     disableQuote: s.showWizard,
   }));
-  const isSupportedChain = useIsSupportedChain();
   const { fromAddress, toAddress } = useMemo(() => {
     return {
       fromAddress: isNative(fromToken?.address)
@@ -410,7 +407,6 @@ export const useQuote = ({
     fromAmount !== "0" &&
     !isFailed &&
     liquidityHubEnabled &&
-    isSupportedChain &&
     !disableQuote;
 
   const query = useQuery({
@@ -552,11 +548,10 @@ export const useLiquidityHub = (args: UseLiquidityHubArgs) => {
   const { slippage } = args;
   const fromTokenUsd = args.swapTypeIsBuy ? args.toTokenUsd : args.fromTokenUsd;
   const toTokenUsd = args.swapTypeIsBuy ? args.fromTokenUsd : args.toTokenUsd;
-  const { fromToken, toToken } = useModifyTokens(
-    args.fromToken,
-    args.toToken,
-    args.swapTypeIsBuy
-  );
+
+  const fromToken = args.swapTypeIsBuy ? args.toToken : args.fromToken;
+  const toToken = args.swapTypeIsBuy ? args.fromToken : args.toToken;
+
   const { fromAmount, dexAmountOut } = useModifyAmounts({
     fromToken,
     toToken,
@@ -564,13 +559,11 @@ export const useLiquidityHub = (args: UseLiquidityHubArgs) => {
     fromAmountUI: args.fromAmountUI,
     dexAmountOut: args.dexAmountOut,
     dexAmountOutUI: args.dexAmountOutUI,
-    deductSlippage: args.deductSlippage,
+    ignoreSlippage: args.ignoreSlippage,
     slippage: args.slippage,
     swapTypeIsBuy: args.swapTypeIsBuy,
-  });  
+  });
 
-  console.log({ fromAmount, dexAmountOut });
-  
   useAllowanceQuery(fromToken, fromAmount);
   const { swapStatus, swapError, updateState } = useSwapState((store) => ({
     swapStatus: store.swapStatus,

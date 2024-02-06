@@ -7,7 +7,6 @@ import { SwapWizard } from "../swap-wizard/SwapWizard";
 import { ThemeProvider } from "styled-components";
 import { darkTheme, lightTheme } from "./theme";
 import { DEFAULT_API_ENDPOINT, DEFAULT_QUOTE_INTERVAL } from "../consts";
-import { partner } from "./types";
 import { analytics } from "./swap-logic";
 const client = new QueryClient();
 
@@ -19,7 +18,7 @@ interface SharedProps {
   provider?: any;
   account?: string;
   chainId?: number;
-  partner: partner;
+  partner: string;
   theme?: "light" | "dark";
   apiUrl?: string;
   uiSettings?: UISettings;

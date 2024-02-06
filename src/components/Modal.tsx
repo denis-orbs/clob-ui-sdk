@@ -3,18 +3,22 @@ import Popup from "reactjs-popup";
 import { FlexColumn, FlexRow, Text } from "../styles";
 import styled, { useTheme, keyframes } from "styled-components";
 import { X } from "react-feather";
-import { ReactNode } from "react";
+import { CSSProperties, ReactNode } from "react";
 
 export function Modal({
   title,
   open,
   onClose,
   children,
+  contentStyles = {},
+  headerStyles = {},
 }: {
   title: string;
   open?: boolean;
   onClose: () => void;
   children: ReactNode;
+  contentStyles?: CSSProperties;
+  headerStyles?: CSSProperties;
 }) {
   const theme = useTheme();
 
@@ -33,26 +37,36 @@ export function Modal({
         padding: "20px",
         boxSizing: "border-box",
         position: "relative",
-        maxWidth: "400px",
         width: "100%",
         fontFamily: "inherit",
         transition: "all 0.3s ease-in-out",
         background: theme.colors.mainBackground,
         border: `1px solid ${theme.colors.border}`,
+        ...contentStyles,
       }}
     >
       <FlexColumn $gap={30}>
         <FlexRow>
-          {title && <Header>{title}</Header>}
-          <CloseButton onClick={onClose}>
-            <X />
-          </CloseButton>
+          {title && (
+            <StyledHeader style={headerStyles}>
+              <StyledTitle>{title}</StyledTitle>
+              {onClose && (
+                <CloseButton onClick={onClose}>
+                  <X />
+                </CloseButton>
+              )}
+            </StyledHeader>
+          )}
         </FlexRow>
         {children}
       </FlexColumn>
     </StyledPopup>
   );
 }
+
+const StyledTitle = styled(Text)`
+  font-size: 20px;
+`
 
 const animation = keyframes`
      0% {
@@ -77,11 +91,8 @@ const StyledPopup = styled(Popup)`
   }
 `;
 
-const Header = ({ children }: { children: string }) => {
-  return <StyledHeader>{children}</StyledHeader>;
-};
 
-const StyledHeader = styled(Text)`
+const StyledHeader = styled(FlexRow)`
   width: 100%;
 `;
 

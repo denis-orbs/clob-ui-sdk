@@ -4,10 +4,9 @@ import { Logo } from "../components";
 import { useSwapState } from "../store";
 import { FlexRow, FlexColumn, Text, Link } from "../styles";
 import { Token } from "../lib/types";
-import { usePartner, useFromAmountUI, useToAmountUI } from "../lib/hooks";
+import { useChainConfig, useFromAmountUI, useToAmountUI } from "../lib/hooks";
 
 export const SwapSuccess = () => {
-  const partner = usePartner();
   const { fromToken, toToken, txHash } = useSwapState(
     (store) => {
       return {
@@ -18,6 +17,8 @@ export const SwapSuccess = () => {
     }
   );
   const fromAmount = useFromAmountUI();
+
+  const explorerUrl = useChainConfig()?.explorerUrl;
 
   const toAmount = useToAmountUI();
   return (
@@ -31,7 +32,7 @@ export const SwapSuccess = () => {
         <StyledArrow />
         <SuccessToken token={toToken} amount={toAmount} />
       </FlexRow>
-      <StyledLink target="_blank" href={`${partner.explorerUrl}/tx/${txHash}`}>
+      <StyledLink target="_blank" href={`${explorerUrl}/tx/${txHash}`}>
         View on explorer
       </StyledLink>
     </StyledSuccess>

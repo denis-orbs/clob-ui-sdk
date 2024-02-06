@@ -95,7 +95,6 @@ export interface Step {
   id: STEPS;
 }
 
-export type partner = "quickswap" | "thena";
 
 export type QuoteQueryArgs = {
   fromToken?: Token;
@@ -105,48 +104,15 @@ export type QuoteQueryArgs = {
   slippage?: number;
 };
 
-export type Partner = {
-  name: string;
+export type ChainConfig = {
   explorerUrl: string;
-  normalizeToken: (token: any) => Token;
-  chains: number[];
 };
-
-export type QuickSwapToken = {
-  decimals: number;
-  symbol: string;
-  name: string;
-  chainId: number;
-  address: string;
-  tokenInfo: {
-    name: string;
-    address: string;
-    symbol: string;
-    decimals: number;
-    chainId: number;
-    logoURI: string;
-  };
-  tags: any[];
-  isNative: boolean;
-  isToken: boolean;
-};
-
-export type ThenaToken = {
-  name: string;
-  symbol: string;
-  decimals: number;
-  chainId: number;
-  address: string;
-  logoURI: string;
-};
-
-export type DappToken = ThenaToken | QuickSwapToken;
 
 
 
 export type UseLiquidityHubArgs = {
-  fromToken?: any;
-  toToken?: any;
+  fromToken?: Token;
+  toToken?: Token;
   fromAmount?: string;
   fromAmountUI?: string;
   fromTokenUsd?: string | number;
@@ -154,6 +120,6 @@ export type UseLiquidityHubArgs = {
   dexAmountOut?: string;
   dexAmountOutUI?: string;
   slippage?: number;
-  swapTypeIsBuy?: boolean
-  deductSlippage?: boolean;
+  swapTypeIsBuy?: boolean;
+  ignoreSlippage?: boolean;
 };
