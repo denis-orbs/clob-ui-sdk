@@ -131,6 +131,8 @@ export class Analytics {
       ...this.data,
       quoteState: "success",
       quoteMillis,
+      quoteError: undefined,
+      isNotClobTradeReason: undefined,
       ...this.handleQuoteData(quoteResponse),
     };
   }

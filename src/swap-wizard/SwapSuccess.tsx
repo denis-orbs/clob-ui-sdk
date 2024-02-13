@@ -4,23 +4,18 @@ import { Logo } from "../components";
 import { useSwapState } from "../store";
 import { FlexRow, FlexColumn, Text, Link } from "../styles";
 import { Token } from "../lib/types";
-import { useChainConfig, useFromAmountUI, useToAmountUI } from "../lib/hooks";
+import { useChainConfig, useFormatNumber, useSwapAmounts } from "../lib/hooks";
 
 export const SwapSuccess = () => {
-  const { fromToken, toToken, txHash } = useSwapState(
-    (store) => {
-      return {
-        fromToken: store.fromToken,
-        toToken: store.toToken,
-        txHash: store.txHash,
-      };
-    }
-  );
-  const fromAmount = useFromAmountUI();
-
+  const txHash = useSwapState((store) => store.txHash);
+  const { fromAmount, toAmount } = useSwapAmounts();
+  const { fromToken, toToken } = useSwapState((store) => ({
+    fromToken: store.fromToken,
+    toToken: store.toToken,
+  }));
   const explorerUrl = useChainConfig()?.explorerUrl;
-
-  const toAmount = useToAmountUI();
+  const _fromAmount = useFormatNumber({value: fromAmount.ui});
+  const _toAmount = useFormatNumber({ value: toAmount.ui });
   return (
     <StyledSuccess>
       <StyledSuccessLogo>
@@ -28,9 +23,9 @@ export const SwapSuccess = () => {
       </StyledSuccessLogo>
       <SuccessText>Swap success</SuccessText>
       <FlexRow>
-        <SuccessToken token={fromToken} amount={fromAmount} />
+        <SuccessToken token={fromToken} amount={_fromAmount} />
         <StyledArrow />
-        <SuccessToken token={toToken} amount={toAmount} />
+        <SuccessToken token={toToken} amount={_toAmount} />
       </FlexRow>
       <StyledLink target="_blank" href={`${explorerUrl}/tx/${txHash}`}>
         View on explorer

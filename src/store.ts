@@ -6,6 +6,8 @@ import {
   LH_CONTROL,
   Token,
   QuoteResponse,
+  Orders,
+  Order,
 } from "./lib/types";
 
 interface SwapStateValues {
@@ -22,7 +24,9 @@ interface SwapStateValues {
   quote?: QuoteResponse;
   swapStatus: ActionStatus;
   swapError?: string;
-  onSwapSuccessDexCallback?: () => void;
+  setFromAddress?: (address: string) => void;
+  onSuccessDexCallback?: () => void;
+  dexFallback?: () => void;
 }
 
 interface SwapState extends SwapStateValues {
@@ -47,7 +51,9 @@ const initialSwapState: SwapStateValues = {
   quote: undefined,
   swapStatus: undefined,
   swapError: undefined,
-  onSwapSuccessDexCallback: undefined,
+  setFromAddress: undefined,
+  onSuccessDexCallback: undefined,
+  dexFallback: undefined,
 };
 
 export const useSwapState = create<SwapState>((set, get) => ({
@@ -55,15 +61,20 @@ export const useSwapState = create<SwapState>((set, get) => ({
   onSwapStart: () => set({ swapStatus: "loading" }),
   updateState: (state) => set({ ...state }),
   onSwapSuccess: () => {
-    set({
-      isFailed: false,
-      failures: 0,
-      swapStatus: "success",
+    set((s) => {
+      if (s.onSuccessDexCallback) {
+        s.onSuccessDexCallback();
+      }
+      return {
+        isFailed: false,
+        failures: 0,
+        swapStatus: "success",
+      };
     });
   },
   onSwapError: (swapError) =>
-    set((state) => {
-      const failures = (state.failures || 0) + 1;
+    set((s) => {
+      const failures = (s.failures || 0) + 1;
       return {
         failures,
         isFailed: failures > 2,
@@ -84,11 +95,14 @@ export const useSwapState = create<SwapState>((set, get) => ({
   },
 }));
 
+
 interface LHControlStore {
   lhControl?: LH_CONTROL;
   setLHControl: (lhControl?: LH_CONTROL) => void;
   liquidityHubEnabled: boolean;
   updateLiquidityHubEnabled: () => void;
+  orders: Orders;
+  addOrder: (address: string, chain: number, order: Order) => void;
 }
 export const useLiquidityHubPersistedStore = create(
   persist<LHControlStore>(
@@ -98,6 +112,18 @@ export const useLiquidityHubPersistedStore = create(
       liquidityHubEnabled: true,
       updateLiquidityHubEnabled: () =>
         set({ liquidityHubEnabled: !get().liquidityHubEnabled }),
+      orders: {},
+      addOrder: (address, chain, order) => {
+        const orders = get().orders;
+        if (!orders[address]) {
+          orders[address] = {};
+        }
+        if (!orders[address][chain]) {
+          orders[address][chain] = [];
+        }
+        orders[address][chain].push(order);
+        set({ orders });
+      }
     }),
     {
       name: "liquidity-hub-control",

@@ -31,6 +31,7 @@ export function Modal({
         background: "rgba(0, 0, 0, 0.65)",
         backdropFilter: "blur(10px)",
         zIndex: 99999,
+        padding: "18px",
       }}
       contentStyle={{
         borderRadius: "20px",
@@ -47,16 +48,16 @@ export function Modal({
     >
       <FlexColumn $gap={30}>
         <FlexRow>
-          {title && (
+
             <StyledHeader style={headerStyles}>
-              <StyledTitle>{title}</StyledTitle>
+              {title && <StyledTitle>{title}</StyledTitle>}
               {onClose && (
                 <CloseButton onClick={onClose}>
                   <X />
                 </CloseButton>
               )}
             </StyledHeader>
-          )}
+
         </FlexRow>
         {children}
       </FlexColumn>

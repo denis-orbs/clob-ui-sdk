@@ -1,34 +1,31 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import SwapImg from "../assets/swap.png";
 import { useNumericFormat } from "react-number-format";
 import BN from "bignumber.js";
 import { WETH } from "../consts";
-import { useSwapState } from "../store";
-import { useAllowanceQuery } from "./swap-logic";
-import { Step, STEPS, Token } from "./types";
-import {
-  isNative,
-  amountUi,
-  amountBN,
-  deductSlippage,
-  addSlippage,
-} from "./utils";
+import { useLiquidityHubPersistedStore, useSwapState } from "../store";
+import { useAllowanceQuery, useSwapCallback } from "./swap-logic";
+import { Order, Step, STEPS } from "./types";
+import { isNative, amountUi } from "./utils";
 import { useLHContext } from "./provider";
 import { chains } from "./config";
-export const useSwapSteps = (): Step[] | undefined => {
+
+import _ from "lodash";
+export const useSwapSteps = (): { steps: Step[]; isLoading: boolean } => {
   const { fromToken, fromAmount } = useSwapState((store) => ({
     fromToken: store.fromToken,
     fromAmount: store.fromAmount,
   }));
 
-  const { data: approved, isLoading: aprovedLoading } = useAllowanceQuery(
-    fromToken,
-    fromAmount
-  );
+  const { isLoading: allowanceQueryLoading, data: isApproved } =
+    useAllowanceQuery(fromToken, fromAmount);
 
   return useMemo(() => {
-    if (aprovedLoading) {
-      return undefined;
+    if (allowanceQueryLoading) {
+      return {
+        steps: [],
+        isLoading: true,
+      };
     }
     const shouldWrap = isNative(fromToken?.address);
     const wrap: Step = {
@@ -65,15 +62,15 @@ export const useSwapSteps = (): Step[] | undefined => {
 
     const steps = [sign, sendTx];
 
-    if (!approved) {
+    if (!isApproved) {
       steps.unshift(approve);
     }
 
     if (shouldWrap) {
       steps.unshift(wrap);
     }
-    return steps;
-  }, [fromToken, approved, aprovedLoading]);
+    return { steps, isLoading: false };
+  }, [fromToken, isApproved, allowanceQueryLoading]);
 };
 
 export const useWETHAddress = () => {
@@ -84,7 +81,6 @@ export const useWETHAddress = () => {
     return WETH[chainId];
   }, [chainId]);
 };
-
 
 export function useDebounce<T>(value: T, delay?: number): T {
   const [debouncedValue, setDebouncedValue] = useState<T>(value);
@@ -142,104 +138,16 @@ export const useFormatNumber = ({
   return result.value?.toString();
 };
 
-export const useFromAmountUI = () => {
-  const { fromAmount, fromToken } = useSwapState((store) => ({
-    fromAmount: store.fromAmount,
-    fromToken: store.fromToken,
-  }));
-
-  const amount = useMemo(() => {
-    if (!fromAmount) return "";
-    return amountUi(fromToken?.decimals, new BN(fromAmount));
-  }, [fromAmount, fromToken]);
-
-  return useFormatNumber({
-    value: amount,
-  });
-};
-
-export const useToAmountUI = () => {
-  const { toToken, quote } = useSwapState((store) => ({
-    quote: store.quote,
-    toToken: store.toToken,
-  }));
-
-  const amount = useMemo(() => {
-    if (!quote) return "";
-    return amountUi(toToken?.decimals, new BN(quote.outAmount));
-  }, [quote, toToken]);
-
-  return useFormatNumber({
-    value: amount,
-  });
-};
-
 export const useChainConfig = () => {
   const chainId = useLHContext().chainId;
 
   return useMemo(() => {
-    if (!chainId) return;
+    if (!chainId) {
+      console.error("ChainId is not set");
+      return;
+    }
     return chains[chainId];
   }, [chainId]);
-};
-
-export const useModifyAmounts = (args: {
-  fromToken?: Token;
-  toToken?: Token;
-  fromAmount?: string;
-  fromAmountUI?: string;
-  dexAmountOut?: string;
-  dexAmountOutUI?: string;
-  ignoreSlippage?: boolean;
-  slippage?: number;
-  swapTypeIsBuy?: boolean;
-}) => {
-  const _fromAmount = useMemo(() => {
-    if ((!args.fromAmount && !args.fromAmountUI) || !args.fromToken)
-      return undefined;
-    const value = args.fromAmount
-      ? args.fromAmount
-      : amountBN(args.fromToken.decimals, args.fromAmountUI || "0").toString();
-    if (args.swapTypeIsBuy) {
-      return addSlippage(value, args.slippage);
-    }
-    return value;
-  }, [
-    args.fromAmount,
-    args.fromAmountUI,
-    args.fromToken,
-    args.swapTypeIsBuy,
-    args.slippage,
-  ]);
-
-  const _dexAmountOut = useMemo(() => {
-    if ((!args.dexAmountOut && !args.dexAmountOutUI) || !args.toToken) {
-      return undefined;
-    }
-    const value = args.dexAmountOut
-      ? args.dexAmountOut
-      : amountBN(args.toToken.decimals, args.dexAmountOutUI || "0").toString();
-
-    if (args.swapTypeIsBuy) {
-      return value;
-    }
-    if (!args.ignoreSlippage) {
-      return deductSlippage(value, args.slippage);
-    }
-    return value;
-  }, [
-    args.dexAmountOut,
-    args.dexAmountOutUI,
-    args.toToken,
-    args.ignoreSlippage,
-    args.slippage,
-    args.swapTypeIsBuy,
-  ]);
-
-  return {
-    fromAmount: _fromAmount,
-    dexAmountOut: _dexAmountOut,
-  };
 };
 
 export const useSwapStateExternal = () => {
@@ -259,3 +167,110 @@ export const useSwapStateExternal = () => {
     swapFailed: !!error,
   };
 };
+
+export const useSwapAmounts = () => {
+  const { fromToken, toToken, fromAmount, quote } = useSwapState((it) => ({
+    fromToken: it.fromToken,
+    toToken: it.toToken,
+    fromAmount: it.fromAmount,
+    quote: it.quote,
+  }));
+
+  return useMemo(() => {
+    return {
+      fromAmount: {
+        value: fromAmount,
+        ui: amountUi(fromToken?.decimals, new BN(fromAmount || 0)),
+      },
+      toAmount: {
+        value: quote?.outAmount,
+        ui: amountUi(toToken?.decimals, new BN(quote?.outAmount || 0)),
+      },
+    };
+  }, [fromToken, toToken, fromAmount, quote]);
+};
+
+export const useSubmitButton = () => {
+  const { quote, fromToken, toToken, swapStatus } = useSwapState((store) => ({
+    quote: store.quote,
+    fromToken: store.fromToken,
+    fromAmount: store.fromAmount,
+    toToken: store.toToken,
+    swapStatus: store.swapStatus,
+  }));
+  const { fromAmount } = useSwapAmounts();
+  const { data: approved, isLoading: allowanceQueryLoading } =
+    useAllowanceQuery(fromToken, fromAmount.value);
+  const isPending = swapStatus === "loading" || allowanceQueryLoading;
+
+  const swapCallback = useSwapCallback({
+    fromToken,
+    fromAmount: fromAmount.value,
+    toToken,
+    quote,
+    approved,
+  });
+
+  return useMemo(() => {
+    const getText = () => {
+      if (isNative(fromToken?.address)) return "Wrap and swap";
+      if (!approved) return "Approve and swap";
+      return "Sign and Swap";
+    };
+
+    return {
+      text: getText(),
+      onClick: swapCallback,
+      isPending,
+    };
+  }, [approved, fromToken, isPending, swapCallback]);
+};
+
+export const useOrders = () => {
+  const { account, chainId } = useLHContext();
+  const orders = useLiquidityHubPersistedStore((s) => s.orders);
+  return useMemo(() => {
+    if (!account || !chainId || !orders) return;
+    return orders?.[account!]?.[chainId!];
+  }, [account, chainId, orders]);
+};
+
+export const useAddOrderCallback = () => {
+  const addOrder = useLiquidityHubPersistedStore((s) => s.addOrder);
+  const { account, chainId } = useLHContext();
+  return useCallback(
+    (order: Order) => {
+      if (!account || !chainId) return;
+      addOrder(account, chainId, order);
+    },
+    [addOrder, account, chainId]
+  );
+};
+
+// if (!hasWeb3Instance()) {
+//   setWeb3Instance(new Web3(provider as any));
+// }
+
+// const web3 = new Web3(provider as any);
+// const contract = new web3.eth.Contract(
+//   reactorABI as any,
+//   REACTOR_ADDRESS
+// );
+// const latestBlock = await block();
+// const targetDate = Date.parse("12 Nov 2023 00:12:00 GMT");
+// const fromBlock = (await findBlock(targetDate)).number;
+
+// let toBlock = latestBlock.number;
+
+// const result = await getPastEvents({
+//   contract,
+//   eventName: "Fill",
+//   filter: {
+//     swapper: account!,
+//   },
+//   fromBlock,
+//   toBlock,
+//   maxDistanceBlocks: 100_000,
+// });
+
+// console.log(result);

@@ -1,25 +1,28 @@
 import { useMemo } from "react";
 import styled from "styled-components";
 import { Logo } from "../components";
-import { useSwapState } from "../store";
 import { FlexColumn, FlexRow, Text } from "../styles";
 import BN from "bignumber.js";
 import { Token } from "../lib/types";
-import { useFromAmountUI, useToAmountUI, useFormatNumber } from "../lib/hooks";
+import { useFormatNumber, useSwapAmounts } from "../lib/hooks";
+import { useSwapState } from "../store";
 
 const StyledSwapDetails = styled(FlexColumn)`
   width: 100%;
   gap: 25px;
 `;
 
-
 export function SwapDetails() {
-  const { fromToken, toToken, fromTokenUsd, toTokenUsd } =
-    useSwapState();
+  const { fromToken, toToken, fromTokenUsd, toTokenUsd } = useSwapState(
+    (s) => ({
+      fromToken: s.fromToken,
+      toToken: s.toToken,
+      fromTokenUsd: s.fromTokenUsd,
+      toTokenUsd: s.toTokenUsd,
+    })
+  );
 
-
-    const fromAmount = useFromAmountUI();
-    const toAmount = useToAmountUI();
+  const { fromAmount, toAmount } = useSwapAmounts();
 
   return (
     <StyledSwapDetails>
@@ -27,13 +30,13 @@ export function SwapDetails() {
         title="You pay"
         usd={fromTokenUsd}
         token={fromToken}
-        amount={fromAmount}
+        amount={fromAmount.ui}
       />
       <TokenDisplay
         title="You receive"
         usd={toTokenUsd}
         token={toToken}
-        amount={toAmount}
+        amount={toAmount.ui}
       />
     </StyledSwapDetails>
   );
@@ -52,9 +55,6 @@ const TokenDisplay = ({
 }) => {
   if (!token) return null;
 
-
-
-
   const totalUsd = useMemo(() => {
     if (!usd || !amount) {
       return "0";
@@ -63,6 +63,7 @@ const TokenDisplay = ({
   }, [usd, amount]);
 
   const _totalUsd = useFormatNumber({ value: totalUsd });
+  const _amount = useFormatNumber({ value: amount });
 
   return (
     <StyledTokenDisplay>
@@ -74,7 +75,7 @@ const TokenDisplay = ({
       >
         <FlexColumn $alignItems="flex-start">
           <TokenAmount>
-            {amount} {token.symbol}
+            {_amount} {token.symbol}
           </TokenAmount>
           {_totalUsd && <USD>${_totalUsd}</USD>}
         </FlexColumn>

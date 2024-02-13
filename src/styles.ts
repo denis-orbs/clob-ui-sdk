@@ -26,3 +26,10 @@ export const Link = styled.a`
   color: ${({ theme }) => theme.colors.linkMain};
   text-decoration: none;
 `
+
+export const Skeleton = styled.div`
+  background-color: rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+  height: 20px;
+  width: 100%;
+`

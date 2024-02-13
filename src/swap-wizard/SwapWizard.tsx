@@ -28,7 +28,10 @@ export function SwapWizard() {
   }, [swapStatus]);
 
   return (
-    <Modal title={modalTitle} open={showWizard} onClose={onCloseSwap}>
+    <Modal title={modalTitle} open={showWizard} onClose={onCloseSwap} 
+    contentStyles={{
+      maxWidth: "420px",
+    }}>
       <Container>
         {swapStatus === "success" ? (
           <SwapSuccess />

@@ -1,34 +1,52 @@
 import { StepComponent } from "./Step";
 import styled from "styled-components";
 import { SwapDetails } from "./Details";
-import { FlexColumn } from "../styles";
+import { FlexColumn, Skeleton } from "../styles";
 import { Button, PoweredByOrbs } from "../components";
-import { useSwapState } from "../store";
-import { useMemo } from "react";
-import { useSwapSteps } from "../lib/hooks";
-import { useAllowanceQuery, useSwap } from "../lib/swap-logic";
-import { isNative } from "../lib/utils";
+import { useSubmitButton, useSwapSteps } from "../lib/hooks";
 export const SwapMain = () => {
-  const steps = useSwapSteps();
-
   return (
     <Container>
       <SwapDetails />
-      {!steps ? null : (
-        <>
-          <StyledSteps $gap={15} style={{ width: "100%" }}>
-            <Divider />
-            {steps?.map((step) => {
-              return <StepComponent key={step.id} step={step} />;
-            })}
-          </StyledSteps>
-          <SubmitButton />
-        </>
-      )}
+      <StepsComponent />
       <PoweredByOrbs />
     </Container>
   );
 };
+
+const StepsComponent = () => {
+  const { steps, isLoading: stepsLoading } = useSwapSteps();
+
+  if (stepsLoading) {
+    return (
+      <StyledLoader>
+        <StyledSkeleton />
+        <StyledSkeleton style={{
+          width: "70%",
+        }} />
+
+      </StyledLoader>
+    );
+  }
+
+  return (
+    <>
+      <StyledSteps $gap={15} style={{ width: "100%" }}>
+        <Divider />
+        {steps.map((step) => {
+          return <StepComponent key={step.id} step={step} />;
+        })}
+      </StyledSteps>
+      <SubmitButton />
+    </>
+  );
+};
+
+const StyledLoader = styled(FlexColumn)`
+width: 100%;
+`
+
+const StyledSkeleton = styled(Skeleton)``
 
 const SubmitButton = () => {
   const { text, onClick, isPending } = useSubmitButton();
@@ -37,39 +55,6 @@ const SubmitButton = () => {
   return <StyledSubmit onClick={onClick}>{text}</StyledSubmit>;
 };
 
-const useSubmitButton = () => {
-  const { fromToken, fromAmount, quote, toToken, onSwapSuccessDexCallback } =
-    useSwapState((store) => ({
-      fromToken: store.fromToken,
-      fromAmount: store.fromAmount,
-      toToken: store.toToken,
-      quote: store.quote,
-      onSwapSuccessDexCallback: store.onSwapSuccessDexCallback,
-    }));
-  const isPending = useSwapState((store) => store.swapStatus) === "loading";
-  const { data: approved } = useAllowanceQuery(fromToken, fromAmount);
-
-  const swap = useSwap({
-    fromToken,
-    fromAmount,
-    toToken,
-    quote,
-  });
-
-  return useMemo(() => {
-    const getText = () => {
-      if (isNative(fromToken?.address)) return "Wrap and swap";
-      if (!approved) return "Approve and swap";
-      return "Sign and Swap";
-    };
-
-    return {
-      text: getText(),
-      onClick: () => swap(onSwapSuccessDexCallback),
-      isPending,
-    };
-  }, [approved, fromToken, isPending, swap, onSwapSuccessDexCallback]);
-};
 
 const Container = styled(FlexColumn)`
   width: 100%;
