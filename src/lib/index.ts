@@ -1,12 +1,14 @@
 export { LiquidityHubProvider } from "./provider";
-export {
-  amountBN,
-  amountUi,
-  getThenaLHTokens,
-} from "./utils";
-export { PoweredByOrbs, OrbsLogo, Modal, Spinner } from '../components'
+export { amountBN, amountUi, getThenaLHTokens } from "./utils";
+export { PoweredByOrbs, OrbsLogo, Modal, Spinner } from "./components";
 export { analytics } from "./analytics";
-export { useLiquidityHub, useSettings, useTradeOwner } from "./swap-logic";
-export { useSwapStateExternal as useSwapState, useFormatNumber } from "./hooks";
+export {
+  useOrders,
+  useSwapDetails,
+  useFormatNumber,
+  useLiquidityHub,
+  useSettings,
+  useTradeOwner,
+} from "./hooks";
 export type { Token } from "./types";
-export { WEBSITE } from "../consts";
+export { WEBSITE } from "./consts";

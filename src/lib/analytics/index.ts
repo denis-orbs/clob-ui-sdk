@@ -334,3 +334,6 @@ export const analytics = {
   onSwapFailed: onDexSwapFailed,
   initSwap: initDexSwap,
 };
+
+
+export const swapAnalytics = new Analytics();

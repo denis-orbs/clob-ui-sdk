@@ -1,9 +1,9 @@
 import { StepComponent } from "./Step";
 import styled from "styled-components";
 import { SwapDetails } from "./Details";
-import { FlexColumn, Skeleton } from "../styles";
+import { FlexColumn, Skeleton } from "../../styles";
 import { Button, PoweredByOrbs } from "../components";
-import { useSubmitButton, useSwapSteps } from "../lib/hooks";
+import { useSwapButton, useSteps } from "../hooks";
 export const SwapMain = () => {
   return (
     <Container>
@@ -15,7 +15,7 @@ export const SwapMain = () => {
 };
 
 const StepsComponent = () => {
-  const { steps, isLoading: stepsLoading } = useSwapSteps();
+  const { steps, isLoading: stepsLoading } = useSteps();
 
   if (stepsLoading) {
     return (
@@ -49,7 +49,7 @@ width: 100%;
 const StyledSkeleton = styled(Skeleton)``
 
 const SubmitButton = () => {
-  const { text, onClick, isPending } = useSubmitButton();
+  const { text, onClick, isPending } = useSwapButton();
 
   if (isPending) return null;
   return <StyledSubmit onClick={onClick}>{text}</StyledSubmit>;

@@ -1,11 +1,11 @@
 import { useMemo } from "react";
 import styled from "styled-components";
 import { Logo } from "../components";
-import { FlexColumn, FlexRow, Text } from "../styles";
+import { FlexColumn, FlexRow, Text } from "../../styles";
 import BN from "bignumber.js";
-import { Token } from "../lib/types";
-import { useFormatNumber, useSwapAmounts } from "../lib/hooks";
-import { useSwapState } from "../store";
+import { Token } from "../types";
+import { useFormatNumber, useSwapAmounts } from "../hooks";
+import { useSwapState } from "../../store";
 
 const StyledSwapDetails = styled(FlexColumn)`
   width: 100%;

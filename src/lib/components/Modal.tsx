@@ -1,6 +1,6 @@
 /* eslint-disable import/no-extraneous-dependencies */
 import Popup from "reactjs-popup";
-import { FlexColumn, FlexRow, Text } from "../styles";
+import { FlexColumn, FlexRow, Text } from "../../styles";
 import styled, { useTheme, keyframes } from "styled-components";
 import { X } from "react-feather";
 import { CSSProperties, ReactNode } from "react";

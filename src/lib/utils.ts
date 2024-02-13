@@ -1,7 +1,7 @@
 import { isNativeAddress, parsebn, zero } from "@defi.org/web3-candies";
 import BN, { BigNumber } from "bignumber.js";
 import Web3 from "web3";
-import { QUOTE_ERRORS, THENA_TOKENS_LIST_API } from "../consts";
+import { QUOTE_ERRORS, THENA_TOKENS_LIST_API } from "./consts";
 
 export const isNative = (address?: string) => isNativeAddress(address || "");
 export const amountBN = (decimals?: number, amount?: string) => {

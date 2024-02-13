@@ -1,10 +1,10 @@
 import { useMemo } from "react";
 import styled from "styled-components";
 import { Spinner } from "../components";
-import { useSwapState } from "../store";
-import { FlexColumn, FlexRow, Link } from "../styles";
+import { useSwapState } from "../../store";
+import { FlexColumn, FlexRow, Link } from "../../styles";
 import { Check, X } from "react-feather";
-import { Step, ActionStatus } from "../lib/types";
+import { Step, ActionStatus } from "../types";
 
 interface Props {
   step: Step;

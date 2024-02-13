@@ -1,7 +1,7 @@
 import { AlertCircle } from "react-feather";
 import styled from "styled-components";
-import { useSwapState } from "../store";
-import { FlexRow, FlexColumn, Text } from "../styles";
+import { useSwapState } from "../../store";
+import { FlexRow, FlexColumn, Text } from "../../styles";
 
 
 export const SwapFailed = () => {

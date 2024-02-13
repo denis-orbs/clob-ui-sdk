@@ -1,10 +1,10 @@
 import { Check, ArrowRight } from "react-feather";
 import styled from "styled-components";
 import { Logo } from "../components";
-import { useSwapState } from "../store";
-import { FlexRow, FlexColumn, Text, Link } from "../styles";
-import { Token } from "../lib/types";
-import { useChainConfig, useFormatNumber, useSwapAmounts } from "../lib/hooks";
+import { useSwapState } from "../../store";
+import { FlexRow, FlexColumn, Text, Link } from "../../styles";
+import { Token } from "../types";
+import { useChainConfig, useFormatNumber, useSwapAmounts } from "../hooks";
 
 export const SwapSuccess = () => {
   const txHash = useSwapState((store) => store.txHash);

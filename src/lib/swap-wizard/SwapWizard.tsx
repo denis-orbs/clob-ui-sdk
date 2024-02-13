@@ -1,5 +1,5 @@
 /* eslint-disable import/no-extraneous-dependencies */
-import { useSwapState } from "../store";
+import { useSwapState } from "../../store";
 import { Modal } from "../components";
 import { SwapMain } from "./SwapMain";
 import { SwapSuccess } from "./SwapSuccess";

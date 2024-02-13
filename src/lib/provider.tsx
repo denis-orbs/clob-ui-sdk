@@ -3,11 +3,11 @@ import React, { createContext, ReactNode, useEffect, useMemo } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { setWeb3Instance } from "@defi.org/web3-candies";
 import Web3 from "web3";
-import { SwapWizard } from "../swap-wizard/SwapWizard";
+import { SwapWizard } from "./swap-wizard/SwapWizard";
 import { ThemeProvider } from "styled-components";
 import { darkTheme, lightTheme } from "./theme";
-import { DEFAULT_API_ENDPOINT, DEFAULT_QUOTE_INTERVAL } from "../consts";
-import { analytics } from "./swap-logic";
+import { DEFAULT_API_ENDPOINT, DEFAULT_QUOTE_INTERVAL } from "./consts";
+import { swapAnalytics } from "./analytics";
 const client = new QueryClient();
 
 interface UISettings {
@@ -24,6 +24,7 @@ interface SharedProps {
   uiSettings?: UISettings;
   quoteInterval?: number;
   disableAnalytics?: boolean;
+  customSubmitSwapModal?: ReactNode;
 }
 
 interface ContextArgs extends SharedProps {
@@ -46,12 +47,20 @@ export const LiquidityHubProvider = ({
   theme,
   quoteInterval = DEFAULT_QUOTE_INTERVAL,
   apiUrl = DEFAULT_API_ENDPOINT,
+  customSubmitSwapModal,
 }: Props) => {
+  const web3 = useMemo(
+    () => (provider ? new Web3(provider) : undefined),
+    [provider]
+  );
+
   useEffect(() => {
-    if (provider) {
-      setWeb3Instance(new Web3(provider));
+    if (web3) {
+      setWeb3Instance(web3);
+    } else {
+      setWeb3Instance(undefined);
     }
-  }, [provider]);
+  }, [web3]);
 
   const _theme = useMemo(() => {
     return theme === "light" ? lightTheme : darkTheme;
@@ -59,15 +68,10 @@ export const LiquidityHubProvider = ({
 
   useEffect(() => {
     if (chainId && partner) {
-      analytics.setChainId(chainId);
-      analytics.setPartner(partner);
+      swapAnalytics.setChainId(chainId);
+      swapAnalytics.setPartner(partner);
     }
   }, [chainId, partner]);
-
-  const web3 = useMemo(
-    () => (provider ? new Web3(provider) : undefined),
-    [provider]
-  );
 
   return (
     <QueryClientProvider client={client}>
@@ -86,7 +90,7 @@ export const LiquidityHubProvider = ({
       >
         <ThemeProvider theme={_theme}>
           {children}
-          <SwapWizard />
+          {!customSubmitSwapModal && <SwapWizard />}
         </ThemeProvider>
       </Context.Provider>
     </QueryClientProvider>

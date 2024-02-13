@@ -1,6 +1,6 @@
 import { ReactNode } from "react";
 import styled from "styled-components";
-import { useLHContext } from "../lib/provider";
+import { useLHContext } from "../provider";
 import { Spinner } from "./Spinner";
 export function Button({
   children,

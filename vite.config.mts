@@ -12,6 +12,7 @@ export default defineConfig({
   build: {
     lib: {
       entry: path.resolve(__dirname, "src/lib/index.ts"),
+      formats: ["es", "umd"],
       fileName: (format) => `main.${format}.js`,
       name: "main",
     },
@@ -30,7 +31,7 @@ export default defineConfig({
     react(),
     tsconfigPaths(),
     dts({
-      insertTypesEntry: true,
+      include: "src/lib/**/*",
     }),
   ],
 });
